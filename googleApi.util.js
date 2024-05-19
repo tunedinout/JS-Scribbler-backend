@@ -177,7 +177,9 @@ async function updateFiddleSessionFolder(
     fiddleName,
     esfiddleFolderId
 ) {
-    const log = logger(`createAppFolderInDrive`)
+    const log = logger(`updateFiddleSessionFolder`);
+    log(`received -> fiddleName`, fiddleName);
+    log(`received -> esfiddleFolderId`, esfiddleFolderId);
     try {
         const { client_secret: privateKey } = await getAppCredentials()
         const decryptedAccessToken = decryptToken(accessToken, privateKey)

@@ -207,14 +207,35 @@ app.post('/drive/create/folder', async (req, res) => {
 // user can get the files inside
 app.post('/drive/folder/session', async (req, res) => {
     try {
-        const log = logger(`/drive/create/folder/session`)
+        const log = logger(`/drive/folder/session - POST`)
         const accessToken = getAccessTokenFromRequestHeader(req)
         log(`accessToken`, accessToken)
-        const { fiddleSessionName, esfiddleFolderId } = req.body
+        const {
+            fiddleSessionName,
+            esfiddleFolderId,
+            js = '',
+            css = '',
+            html = '',
+        } = req.body
+
+        log(`fiddleSessionName`, fiddleSessionName)
+        log(`esfiddleFolderId`, esfiddleFolderId)
+        log(`js content -> `, js)
+        log(`css content -> `, css)
+        log(`html content -> `, html)
+
+        if (!fiddleSessionName || !esfiddleFolderId) {
+            log(`return 401 in response - bad request received.`)
+            return res.status(400).json({
+                message: `Missing requiredFields fiddleSessionName/esfiddleFolderId`,
+            })
+        }
 
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
-           return res.status(401).json({ message: `acccess token expired!` })
+            return res
+                .status(401)
+                .json({ message: `acccess token expired/invalid!` })
         }
 
         // if fiddleSessionName folder is not there it will create
@@ -226,27 +247,33 @@ app.post('/drive/folder/session', async (req, res) => {
 
         // create default js file
         await saveFileToGoogleDrive(
-            { filename: 'index.js', data: '' },
+            { filename: 'index.js', data: js },
             accessToken,
             fiddleSessionId
         )
 
         // create the default html file
         await saveFileToGoogleDrive(
-            { filename: 'index.html', data: '' },
+            { filename: 'index.html', data: html },
             accessToken,
             fiddleSessionId
         )
 
         // create the default css file
         await saveFileToGoogleDrive(
-            { filename: 'index.css', data: '' },
+            { filename: 'index.css', data: css },
             accessToken,
             fiddleSessionId
         )
         res.location(`/drive/folder/session/${fiddleSessionId}`)
         // in update as well maintain consistency
-        res.status(201)
+        res.status(201).send({
+            id: fiddleSessionId,
+            name: fiddleSessionName,
+            js,
+            css,
+            html,
+        })
     } catch (error) {
         console.error(`failed while getting drive files`, error)
         res.status(500).send({ message: error })
@@ -269,7 +296,7 @@ app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
             log(`API token as expired`)
-           return res.status(401).json({ message: `acccess token expired!` })
+            return res.status(401).json({ message: `acccess token expired!` })
         }
 
         log(`token is valid`)
@@ -300,7 +327,7 @@ app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
             )
 
         // assume successs if not error thrown
-        res.status(204)
+        res.status(204).send()
     } catch (error) {
         console.error(`failed while getting drive files`, error)
         res.status(500).send({ message: error })
@@ -324,7 +351,7 @@ app.get('/drive/folder/sessions', async (req, res) => {
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
             log(`API token as expired`)
-           return res.status(401).json({ message: `acccess token expired!` })
+            return res.status(401).json({ message: `acccess token expired!` })
         }
 
         const drive = await getDriveInstance(accessToken)
@@ -358,7 +385,7 @@ app.get(`/drive/folder/sessions/:id`, async (req, res) => {
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
             log(`API token as expired`)
-           return res.status(401).json({ message: `acccess token expired!` })
+            return res.status(401).json({ message: `acccess token expired!` })
         }
         // get the content of index.js, index.html and index.css
         const drive = await getDriveInstance(accessToken)
@@ -440,7 +467,9 @@ app.post(`/drive/file/upload`, async (req, res) => {
 
             const isTokenValid = await validateAccessToken(encryptedAccessToken)
             if (!isTokenValid) {
-               return res.status(401).json({ message: `acccess token expired!` })
+                return res
+                    .status(401)
+                    .json({ message: `acccess token expired!` })
             }
             await saveFileToGoogleDrive(
                 file,
