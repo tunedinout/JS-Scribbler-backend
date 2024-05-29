@@ -173,7 +173,7 @@ app.post('/auth/google/refresh', async (req, res) => {
         })
     } catch (error) {
         console.error(`failed while refreshing token`, error)
-        res.status(500).send({ message: error })
+        res.status(500).send({message: `Something went wrong while refreshing the token. Please try again later.`})
     }
 })
 
