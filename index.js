@@ -1,22 +1,25 @@
 const express = require('express')
-// const multer = require('multer');
 const cors = require('cors')
 const {
-    authorize,
-    listFiles,
     getAppCredentials,
-    verifyUserAccessToken,
     getUserAuthUrl,
     getAuthClient,
     createAppFolderInDrive,
     saveFileToGoogleDrive,
-    syncFileDataFromDrive,
+    updateFiddleSessionFolder,
+    validateAccessToken,
+    getDriveInstance,
 } = require('./googleApi.util')
-const googleAuthLib = require('google-auth-library')
-const jwt = require('jsonwebtoken')
 const { verifyIdToken, storeSession, getSession } = require('./session.util')
-const { mongoUpdateOne, mongoDelete, mongoPost } = require('./mongo.util')
-const { encryptToken, decryptToken, getLogger, cleanFolderId } = require('./util')
+const {
+    encryptToken,
+    decryptToken,
+    getLogger,
+    cleanFolderId,
+    sanitizeHTML,
+    getAccessTokenFromBearerToken,
+    getAccessTokenFromRequestHeader,
+} = require('./util')
 const SCOPES = [
     'https://www.googleapis.com/auth/drive',
     // test upload files wihtout the scopes below
@@ -25,16 +28,54 @@ const SCOPES = [
     // of files not getting saved in the folder
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/drive.metadata',
-    // 
+    //
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
 ]
-const { google } = require('googleapis')
 const fs = require('fs')
+const { default: helmet } = require('helmet')
 
 const app = express()
 app.use(express.json())
 app.use(cors())
+// add CSP headers
+app.use(
+    helmet({
+        // NOTE: Disabled for local development
+        // enable this at the time of deployment
+
+        // hosting server might overwrite these check
+        // at the time of deployment
+        contentSecurityPolicy: false,
+        // TODO: Enable this at the time of deployment
+        // contentSecurityPolicy: {
+        //     directives: {
+        //         defaultSrc: ["'self'"],
+        //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsfiddle.net
+        //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
+        //         objectSrc: ["'none'"],
+        //         imgSrc: ["'self'", 'data:'],
+        //         fontSrc: ["'self'"],
+        //         frameSrc: ["'none'"],
+        //         workerSrc: ["'none'"],
+        //         frameAncestors: ["'none'"],
+        //         baseUri: ["'self'"],
+        //         formAction: ["'self'"],
+        //         upgradeInsecureRequests: [],
+        //     },
+        // },
+        frameguard: {
+            action: 'sameorigin',
+        },
+        hsts: {
+            maxAge: 63072000, // 2 years, for Strict-Transport-Security
+            includeSubDomains: true,
+        },
+        referrerPolicy: {
+            policy: 'strict-origin-when-cross-origin',
+        },
+    })
+)
 let logger = getLogger('index.js', 'root file')
 
 // send auth url to ui for user login and
@@ -42,10 +83,8 @@ let logger = getLogger('index.js', 'root file')
 app.get('/auth/google', async (_, res) => {
     // delete any existing session data
     const log = logger('/auth/google - GET')
-    const result = await mongoDelete('users', {})
-    log(` delete result `, result)
     try {
-        const authURL = await getUserAuthUrl(SCOPES, {prompt: 'consent'})
+        const authURL = await getUserAuthUrl(SCOPES, { prompt: 'consent' })
 
         res.setHeader('Access-Control-Allow-Origin', '*')
         log(`the auth url : `, authURL)
@@ -73,8 +112,6 @@ app.post('/auth/google', async (req, res) => {
             access_token: accessToken,
             expiry_date: expiryDate,
             refresh_token: refreshToken,
-            scope,
-            token_type = 'Bearer',
             id_token: idToken,
         } = oauth2ClientAccessTokenRespose.tokens
         // get email from access token
@@ -85,25 +122,6 @@ app.post('/auth/google', async (req, res) => {
         const existingSessionResponse = await getSession(userInfo.email)
 
         log(`existing session`, existingSessionResponse)
-
-        if (!existingSessionResponse) {
-            await storeSession(
-                // sessionId,
-                // deviceId,
-                userInfo.email,
-                encryptToken(accessToken, client_secret),
-                encryptToken(refreshToken, client_secret),
-                encryptToken(idToken, client_secret),
-                expiryDate,
-                token_type
-            )
-        } else {
-            log(
-                `lets do something with existing session response`,
-                existingSessionResponse
-            )
-            // const {}
-        }
 
         // encrypt access Token, refresh token and idToken
 
@@ -123,21 +141,15 @@ app.post('/auth/google', async (req, res) => {
     }
 })
 
-// token expiry is reliable let ui figure it out
-
-// TODO since user has the encrypted object
-// take refreshToken and accessToken from req body
-// use a function called decryptToken(token, client_secret)
-// after decoding we proceeding to do the token refresh
-// and send back to the user as in above /auth/google post api
 app.post('/auth/google/refresh', async (req, res) => {
     const log = logger('/auth/google/refresh - POST')
     try {
-        const { refreshToken, email } = req.body
+        const { refreshToken } = req.body
         const client = await getAuthClient()
         const { client_secret } = await getAppCredentials()
         const decodedRefreshToken = decryptToken(refreshToken, client_secret)
-        log('[ decodedRefreshToken ]', decodedRefreshToken)
+
+        log('decodedRefreshToken', decodedRefreshToken)
         log('refreshToken', refreshToken)
 
         client.setCredentials({
@@ -145,22 +157,23 @@ app.post('/auth/google/refresh', async (req, res) => {
         })
         const credentialResponse = await client.getAccessToken()
 
-        log(credentialResponse)
+        log(`credentialResponse`, credentialResponse)
+
         const { access_token, id_token, expiry_date } =
             credentialResponse.res.data
+
         const userInfo = await verifyIdToken(id_token)
-        await mongoUpdateOne('users', { email }, { access_token, id_token })
+        const { name, email } = userInfo
         res.status(201).send({
             accessToken: encryptToken(access_token, client_secret),
             refreshToken: encryptToken(refreshToken, client_secret),
             email,
-            name: userInfo.name,
+            name,
             expiryDate: expiry_date,
-            idToken: id_token
         })
     } catch (error) {
         console.error(`failed while refreshing token`, error)
-        res.status(500).send({ message: error })
+        res.status(500).send({message: `Something went wrong while refreshing the token. Please try again later.`})
     }
 })
 
@@ -169,38 +182,245 @@ app.post('/auth/google/refresh', async (req, res) => {
 app.post('/drive/create/folder', async (req, res) => {
     try {
         const log = logger(`/drive/create/folder`)
-        const { accessToken } = req.body
+        const accessToken = getAccessTokenFromRequestHeader(req)
+        const isTokenValid = await validateAccessToken(accessToken)
+        if (!isTokenValid) {
+            return res.status(401).json({ message: `acccess token expired!` })
+        }
 
         const folderId = await createAppFolderInDrive(accessToken)
         // const drive = google.drive({version: 'v3', oauth_token: `Bearer ${decryptedAccessToken}`})
         // log(`create app folder response`,   folderId);
         // send only folder id
-        res.status(201).send({id: folderId})
+        res.status(201).send({ id: folderId })
+    } catch (error) {
+        console.error(`failed while getting drive files`, error)
+
+        if (!res.headersSent) {
+            res.status(500).send({ message: error })
+        }
+    }
+})
+
+// create a folder for a new fiddle
+
+// user can get the files inside
+app.post('/drive/folder/session', async (req, res) => {
+    try {
+        const log = logger(`/drive/folder/session - POST`)
+        const accessToken = getAccessTokenFromRequestHeader(req)
+        log(`accessToken`, accessToken)
+        const {
+            fiddleSessionName,
+            esfiddleFolderId,
+            js = '',
+            css = '',
+            html = '',
+        } = req.body
+
+        log(`fiddleSessionName`, fiddleSessionName)
+        log(`esfiddleFolderId`, esfiddleFolderId)
+        log(`js content -> `, js)
+        log(`css content -> `, css)
+        log(`html content -> `, html)
+
+        if (!fiddleSessionName || !esfiddleFolderId) {
+            log(`return 401 in response - bad request received.`)
+            return res.status(400).json({
+                message: `Missing requiredFields fiddleSessionName/esfiddleFolderId`,
+            })
+        }
+
+        const isTokenValid = await validateAccessToken(accessToken)
+        if (!isTokenValid) {
+            return res
+                .status(401)
+                .json({ message: `acccess token expired/invalid!` })
+        }
+
+        // if fiddleSessionName folder is not there it will create
+        const fiddleSessionId = await updateFiddleSessionFolder(
+            accessToken,
+            fiddleSessionName,
+            esfiddleFolderId
+        )
+
+        // create default js file
+        await saveFileToGoogleDrive(
+            { filename: 'index.js', data: js },
+            accessToken,
+            fiddleSessionId
+        )
+
+        // create the default html file
+        await saveFileToGoogleDrive(
+            { filename: 'index.html', data: html },
+            accessToken,
+            fiddleSessionId
+        )
+
+        // create the default css file
+        await saveFileToGoogleDrive(
+            { filename: 'index.css', data: css },
+            accessToken,
+            fiddleSessionId
+        )
+        res.location(`/drive/folder/session/${fiddleSessionId}`)
+        // in update as well maintain consistency
+        res.status(201).send({
+            id: fiddleSessionId,
+            name: fiddleSessionName,
+            js,
+            css,
+            html,
+        })
     } catch (error) {
         console.error(`failed while getting drive files`, error)
         res.status(500).send({ message: error })
     }
-});
+})
 
-app.post(`/drive/load-files`, async (req, res) => {
-    // get all the files with string data
-    // return this to consumer
-    const log = logger(`/drive/load-files`);
-    log(`req.body`, req.body);
+app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
     try {
-        
-        const { accessToken, folderId  } = req.body;
-        const filesWithData = await syncFileDataFromDrive(folderId, accessToken);
-        res.status(200).send({files: filesWithData});
-    } catch (error) {
-        console.error(error);
-        res.status(500).send(error);
+        const log = logger(`/drive/create/folder/session`)
+        const accessToken = getAccessTokenFromRequestHeader(req)
+        const { fiddleSessionId } = req.params
+        const { js = '', css = '', html = '' } = req.body
 
+        log(`request.body`, req.body)
+
+        if (!accessToken || !fiddleSessionId)
+            res.status(400).json({
+                message: `Missing requiredFields accessToken/fiddleSessionId`,
+            })
+        const isTokenValid = await validateAccessToken(accessToken)
+        if (!isTokenValid) {
+            log(`API token as expired`)
+            return res.status(401).json({ message: `acccess token expired!` })
+        }
+
+        log(`token is valid`)
+
+        log(`fiddleSessionId`, fiddleSessionId)
+
+        if (js)
+            // create the initial js file
+            await saveFileToGoogleDrive(
+                { filename: 'index.js', data: js },
+                accessToken,
+                fiddleSessionId
+            )
+        if (html)
+            // create the default html file
+            await saveFileToGoogleDrive(
+                { filename: 'index.html', data: html },
+                accessToken,
+                fiddleSessionId
+            )
+
+        if (css)
+            // create the default css file
+            await saveFileToGoogleDrive(
+                { filename: 'index.css', data: css },
+                accessToken,
+                fiddleSessionId
+            )
+
+        // assume successs if not error thrown
+        res.status(204).send()
+    } catch (error) {
+        console.error(`failed while getting drive files`, error)
+        res.status(500).send({ message: error })
+    }
+})
+
+// send all the existing session names ids and timestamp
+app.get('/drive/folder/sessions', async (req, res) => {
+    const log = logger('/drive/folder/sessions')
+    try {
+        const accessToken = getAccessTokenFromRequestHeader(req)
+        const { esfiddleFolderId } = req.query
+
+        log('/drive/folder/sessions -> accessToken', accessToken)
+        log('/drive/folder/sessions -> esfiddleFolderId', esfiddleFolderId)
+
+        if (!accessToken || !esfiddleFolderId)
+            res.status(400).json({
+                message: `Missing requiredFields accessToken/esfiddleFolderId`,
+            })
+        const isTokenValid = await validateAccessToken(accessToken)
+        if (!isTokenValid) {
+            log(`API token as expired`)
+            return res.status(401).json({ message: `acccess token expired!` })
+        }
+
+        const drive = await getDriveInstance(accessToken)
+
+        const response = await drive.files.list({
+            q: `'${esfiddleFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            fields: 'files(id,name)',
+        })
+
+        log(`session folders`, response.data)
+        res.status(200).send(response.data.files)
+    } catch (error) {
+        console.error(`error occurred while backing up files : `, error)
+        res.status(500).send({ message: error.message })
+    }
+})
+
+// get js, html, css from a particular fiddle session
+app.get(`/drive/folder/sessions/:id`, async (req, res) => {
+    const log = logger(`/drive/folder/session/:id`)
+    try {
+        // each fiddle session is folder in the google drive
+        const { id: fiddleSesionId } = req.params
+        log(`params received`, req.params)
+        const accessToken = getAccessTokenFromRequestHeader(req)
+
+        if (!accessToken || !fiddleSesionId)
+            res.status(400).json({
+                message: `Missing requiredFields accessToken/fiddleSesionId`,
+            })
+        const isTokenValid = await validateAccessToken(accessToken)
+        if (!isTokenValid) {
+            log(`API token as expired`)
+            return res.status(401).json({ message: `acccess token expired!` })
+        }
+        // get the content of index.js, index.html and index.css
+        const drive = await getDriveInstance(accessToken)
+
+        // get all the files id, mimeType etc
+        // make parallel calls to get contents of each file
+
+        const response = await drive.files.list({
+            fields: 'files(id,mimeType)',
+            q: `'${fiddleSesionId}' in parents`,
+        })
+
+        const files = response.data.files
+
+        const allFilesWithData = await Promise.all(
+            files.map(async (file) => {
+                const { id: fileId } = file
+                const filesResponse = await drive.files.get({
+                    fileId,
+                    alt: 'media',
+                })
+                return { ...file, data: filesResponse.data }
+            })
+        )
+        res.status(200).send(allFilesWithData)
+    } catch (error) {
+        console.error(error)
+        res.status(500).send(error)
     }
 })
 
 // create a silent backup of the file
 // user will have indexeedb as first level of backup
+// DECOMISSION - Only for learning without using multer
+// also way to send access token is probably not right
 app.post(`/drive/file/upload`, async (req, res) => {
     try {
         const log = logger(`/drive/file/upload`)
@@ -218,37 +438,44 @@ app.post(`/drive/file/upload`, async (req, res) => {
             // remove the parts before first boundary
             // and after last boundary string
             const parts = data.toString().split(`--${boundary}`).slice(1, -1)
-            let file, folderId, encryptedAccessToken;
+            let file, folderId, encryptedAccessToken
             parts.forEach((part) => {
-                const name = part.match(/name="(.+?)"/)[1];
+                const name = part.match(/name="(.+?)"/)[1]
                 switch (name) {
                     case 'file':
                         const match = part.match(/filename="(.+?)"/)
                         if (match) {
-                            const filename = match[1];
+                            const filename = match[1]
                             const fileData = part.split('\r\n\r\n')[1]
                             file = { filename, data: fileData }
                         }
-                        break;
-                    case 'folderId': 
-                    // TODO: there is suspected addition \r\n to the 
-                    // folder remove this
-                    folderId = part.split('\r\n\r\n')[1];
-                    break;
-                    case 'accessToken': 
-                    encryptedAccessToken =  part.split('\r\n\r\n')[1];
-                    break;
+                        break
+                    case 'folderId':
+                        // TODO: there is suspected addition \r\n to the
+                        // folder remove this
+                        folderId = part.split('\r\n\r\n')[1]
+                        break
+                    case 'accessToken':
+                        encryptedAccessToken = part.split('\r\n\r\n')[1]
+                        break
                     default:
-                        break;
+                        break
                 }
 
                 log(`all data`, file, folderId, encryptedAccessToken)
-               
             })
-            // secondary backup 
-            // await mongoPost('files', [file])
-            // primary backup is gdrive
-            await saveFileToGoogleDrive(file, encryptedAccessToken, cleanFolderId(folderId))
+
+            const isTokenValid = await validateAccessToken(encryptedAccessToken)
+            if (!isTokenValid) {
+                return res
+                    .status(401)
+                    .json({ message: `acccess token expired!` })
+            }
+            await saveFileToGoogleDrive(
+                file,
+                encryptedAccessToken,
+                cleanFolderId(folderId)
+            )
 
             res.status(201).send()
         })
@@ -256,6 +483,11 @@ app.post(`/drive/file/upload`, async (req, res) => {
         console.error(`error occurred while backing up files : `, error)
         res.status(500).send(error)
     }
+})
+
+// root endpoint
+app.get('/', (_, res) => {
+    res.end()
 })
 
 app.listen(3000, async () => {
