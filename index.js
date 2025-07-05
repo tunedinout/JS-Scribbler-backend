@@ -6,7 +6,7 @@ const {
     getAuthClient,
     createAppFolderInDrive,
     saveFileToGoogleDrive,
-    updateFiddleSessionFolder,
+    updateScribblerSessionFolder,
     validateAccessToken,
     getDriveInstance,
 } = require('./googleApi.util')
@@ -51,7 +51,7 @@ app.use(
         // contentSecurityPolicy: {
         //     directives: {
         //         defaultSrc: ["'self'"],
-        //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsfiddle.net
+        //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
         //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
         //         objectSrc: ["'none'"],
         //         imgSrc: ["'self'", 'data:'],
@@ -202,7 +202,7 @@ app.post('/drive/create/folder', async (req, res) => {
     }
 })
 
-// create a folder for a new fiddle
+// create a folder for a new scribbler
 
 // user can get the files inside
 app.post('/drive/folder/session', async (req, res) => {
@@ -211,23 +211,23 @@ app.post('/drive/folder/session', async (req, res) => {
         const accessToken = getAccessTokenFromRequestHeader(req)
         log(`accessToken`, accessToken)
         const {
-            fiddleSessionName,
-            esfiddleFolderId,
+            scribblerSessionName,
+            scribblerFolderId,
             js = '',
             css = '',
             html = '',
         } = req.body
 
-        log(`fiddleSessionName`, fiddleSessionName)
-        log(`esfiddleFolderId`, esfiddleFolderId)
+        log(`scribblerSessionName`, scribblerSessionName)
+        log(`scribblerFolderId`, scribblerFolderId)
         log(`js content -> `, js)
         log(`css content -> `, css)
         log(`html content -> `, html)
 
-        if (!fiddleSessionName || !esfiddleFolderId) {
+        if (!scribblerSessionName || !scribblerFolderId) {
             log(`return 401 in response - bad request received.`)
             return res.status(400).json({
-                message: `Missing requiredFields fiddleSessionName/esfiddleFolderId`,
+                message: `Missing requiredFields scribblerSessionName/scribblerFolderId`,
             })
         }
 
@@ -238,38 +238,38 @@ app.post('/drive/folder/session', async (req, res) => {
                 .json({ message: `acccess token expired/invalid!` })
         }
 
-        // if fiddleSessionName folder is not there it will create
-        const fiddleSessionId = await updateFiddleSessionFolder(
+        // if scribblerSessionName folder is not there it will create
+        const scribblerSessionId = await updateScribblerSessionFolder(
             accessToken,
-            fiddleSessionName,
-            esfiddleFolderId
+            scribblerSessionName,
+            scribblerFolderId
         )
 
         // create default js file
         await saveFileToGoogleDrive(
             { filename: 'index.js', data: js },
             accessToken,
-            fiddleSessionId
+            scribblerSessionId
         )
 
         // create the default html file
         await saveFileToGoogleDrive(
             { filename: 'index.html', data: html },
             accessToken,
-            fiddleSessionId
+            scribblerSessionId
         )
 
         // create the default css file
         await saveFileToGoogleDrive(
             { filename: 'index.css', data: css },
             accessToken,
-            fiddleSessionId
+            scribblerSessionId
         )
-        res.location(`/drive/folder/session/${fiddleSessionId}`)
+        res.location(`/drive/folder/session/${scribblerSessionId}`)
         // in update as well maintain consistency
         res.status(201).send({
-            id: fiddleSessionId,
-            name: fiddleSessionName,
+            id: scribblerSessionId,
+            name: scribblerSessionName,
             js,
             css,
             html,
@@ -280,18 +280,18 @@ app.post('/drive/folder/session', async (req, res) => {
     }
 })
 
-app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
+app.put('/drive/folder/session/:scribblerSessionId', async (req, res) => {
     try {
         const log = logger(`/drive/create/folder/session`)
         const accessToken = getAccessTokenFromRequestHeader(req)
-        const { fiddleSessionId } = req.params
+        const { scribblerSessionId } = req.params
         const { js = '', css = '', html = '' } = req.body
 
         log(`request.body`, req.body)
 
-        if (!accessToken || !fiddleSessionId)
+        if (!accessToken || !scribblerSessionId)
             res.status(400).json({
-                message: `Missing requiredFields accessToken/fiddleSessionId`,
+                message: `Missing requiredFields accessToken/scribblerSessionId`,
             })
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
@@ -301,21 +301,21 @@ app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
 
         log(`token is valid`)
 
-        log(`fiddleSessionId`, fiddleSessionId)
+        log(`scribblerSessionId`, scribblerSessionId)
 
         if (js)
             // create the initial js file
             await saveFileToGoogleDrive(
                 { filename: 'index.js', data: js },
                 accessToken,
-                fiddleSessionId
+                scribblerSessionId
             )
         if (html)
             // create the default html file
             await saveFileToGoogleDrive(
                 { filename: 'index.html', data: html },
                 accessToken,
-                fiddleSessionId
+                scribblerSessionId
             )
 
         if (css)
@@ -323,7 +323,7 @@ app.put('/drive/folder/session/:fiddleSessionId', async (req, res) => {
             await saveFileToGoogleDrive(
                 { filename: 'index.css', data: css },
                 accessToken,
-                fiddleSessionId
+                scribblerSessionId
             )
 
         // assume successs if not error thrown
@@ -339,14 +339,14 @@ app.get('/drive/folder/sessions', async (req, res) => {
     const log = logger('/drive/folder/sessions')
     try {
         const accessToken = getAccessTokenFromRequestHeader(req)
-        const { esfiddleFolderId } = req.query
+        const { scribblerFolderId } = req.query
 
         log('/drive/folder/sessions -> accessToken', accessToken)
-        log('/drive/folder/sessions -> esfiddleFolderId', esfiddleFolderId)
+        log('/drive/folder/sessions -> scribblerFolderId', scribblerFolderId)
 
-        if (!accessToken || !esfiddleFolderId)
+        if (!accessToken || !scribblerFolderId)
             res.status(400).json({
-                message: `Missing requiredFields accessToken/esfiddleFolderId`,
+                message: `Missing requiredFields accessToken/scribblerFolderId`,
             })
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
@@ -357,7 +357,7 @@ app.get('/drive/folder/sessions', async (req, res) => {
         const drive = await getDriveInstance(accessToken)
 
         const response = await drive.files.list({
-            q: `'${esfiddleFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            q: `'${scribblerFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
             fields: 'files(id,name)',
         })
 
@@ -369,18 +369,18 @@ app.get('/drive/folder/sessions', async (req, res) => {
     }
 })
 
-// get js, html, css from a particular fiddle session
+// get js, html, css from a particular scribbler session
 app.get(`/drive/folder/sessions/:id`, async (req, res) => {
     const log = logger(`/drive/folder/session/:id`)
     try {
-        // each fiddle session is folder in the google drive
-        const { id: fiddleSesionId } = req.params
+        // each scribbler session is folder in the google drive
+        const { id: scribblerSesionId } = req.params
         log(`params received`, req.params)
         const accessToken = getAccessTokenFromRequestHeader(req)
 
-        if (!accessToken || !fiddleSesionId)
+        if (!accessToken || !scribblerSesionId)
             res.status(400).json({
-                message: `Missing requiredFields accessToken/fiddleSesionId`,
+                message: `Missing requiredFields accessToken/scribblerSesionId`,
             })
         const isTokenValid = await validateAccessToken(accessToken)
         if (!isTokenValid) {
@@ -395,7 +395,7 @@ app.get(`/drive/folder/sessions/:id`, async (req, res) => {
 
         const response = await drive.files.list({
             fields: 'files(id,mimeType)',
-            q: `'${fiddleSesionId}' in parents`,
+            q: `'${scribblerSesionId}' in parents`,
         })
 
         const files = response.data.files
