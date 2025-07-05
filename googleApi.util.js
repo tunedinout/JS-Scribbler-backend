@@ -88,7 +88,7 @@ async function folderExistsInDrive(accessToken) {
     const log = logger(`folderExistsInDrive`)
     const { client_secret: privateKey } = await getAppCredentials()
     const decryptedAccessToken = decryptToken(accessToken, privateKey)
-    const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='esfiddle' and trashed=false`
+    const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='scribbler' and trashed=false`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
         {
@@ -107,11 +107,11 @@ async function folderExistsInDrive(accessToken) {
     } else return null
 }
 
-async function getFolderIdByName(accessToken, name, esfiddleFolderId) {
+async function getFolderIdByName(accessToken, name, scribblerFolderId) {
     const log = logger(`getFolderIdByName`)
     const { client_secret: privateKey } = await getAppCredentials()
     const decryptedAccessToken = decryptToken(accessToken, privateKey)
-    const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='${name}' and trashed=false and '${esfiddleFolderId}' in parents`
+    const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='${name}' and trashed=false and '${scribblerFolderId}' in parents`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
         {
@@ -130,7 +130,7 @@ async function getFolderIdByName(accessToken, name, esfiddleFolderId) {
     } else return null
 }
 /**
- * Creates a folder called esfiddle in drive if its not there
+ * Creates a folder called scribbler in drive if its not there
  * This should ideally never fail
  * @param {string} accessToken - encrypted access token
  */
@@ -145,7 +145,7 @@ async function createAppFolderInDrive(accessToken) {
         let newFileId
         if (!existingFolderId) {
             const folderMetadata = {
-                name: 'esfiddle',
+                name: 'scribbler',
                 mimeType: 'application/vnd.google-apps.folder',
             }
             /// create his folder in drive
@@ -172,30 +172,30 @@ async function createAppFolderInDrive(accessToken) {
     }
 }
 
-async function updateFiddleSessionFolder(
+async function updateScribblerSessionFolder(
     accessToken,
-    fiddleName,
-    esfiddleFolderId
+    scribblerName,
+    scribblerFolderId
 ) {
-    const log = logger(`updateFiddleSessionFolder`);
-    log(`received -> fiddleName`, fiddleName);
-    log(`received -> esfiddleFolderId`, esfiddleFolderId);
+    const log = logger(`updateScribblerSessionFolder`);
+    log(`received -> scribblerName`, scribblerName);
+    log(`received -> scribblerFolderId`, scribblerFolderId);
     try {
         const { client_secret: privateKey } = await getAppCredentials()
         const decryptedAccessToken = decryptToken(accessToken, privateKey)
 
         const existingFolderId = await getFolderIdByName(
             accessToken,
-            fiddleName,
-            esfiddleFolderId
+            scribblerName,
+            scribblerFolderId
         )
         log(`existingFolderId`, existingFolderId)
         let newFileId
         if (!existingFolderId) {
             const folderMetadata = {
-                name: fiddleName,
+                name: scribblerName,
                 mimeType: 'application/vnd.google-apps.folder',
-                parents: [esfiddleFolderId],
+                parents: [scribblerFolderId],
             }
             /// create his folder in drive
             const response = await fetch(
@@ -221,7 +221,7 @@ async function updateFiddleSessionFolder(
     }
 }
 
-async function createInitialFiles(accessToken, fiddleSessionId) {
+async function createInitialFiles(accessToken, scribblerSessionId) {
     const log = logger(`createInitialFiles`)
     const { client_secret: privateKey } = await getAppCredentials()
     const decryptedAccessToken = decryptToken(accessToken, privateKey)
@@ -235,8 +235,8 @@ async function createInitialFiles(accessToken, fiddleSessionId) {
         const fileMetadata = {
             name,
             mimeType,
-            // fiddle session folder id
-            parents: [fiddleSessionId],
+            // scribbler session folder id
+            parents: [scribblerSessionId],
         }
         let response
 
@@ -481,7 +481,7 @@ module.exports = {
     getUserAuthUrl,
     getDriveInstance,
     createAppFolderInDrive,
-    updateFiddleSessionFolder,
+    updateScribblerSessionFolder,
     createInitialFiles,
     saveFileToGoogleDrive,
     syncFileDataFromDrive,

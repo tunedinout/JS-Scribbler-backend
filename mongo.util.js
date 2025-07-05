@@ -1,9 +1,9 @@
 const { MongoClient } = require('mongodb')
 const MONGODB_URI =
-    `mongodb+srv://tunedinout:NcGlGwirs5787TW1@serverlessinstance0.pnojtvn.mongodb.net/ ` +
+    `mongodb+srv://tunedinout:7Ah6eKjuVtZBhxiW@serverlessinstance0.pnojtvn.mongodb.net/ ` +
     `?retryWrites=true&w=majority`
 //  &appName=ServerlessInstance0
-const MONGODB = 'esfiddle'
+const MONGODB = 'scribbler'
 module.exports = (function () {
     /**
      *  Based on the query can retreive items
