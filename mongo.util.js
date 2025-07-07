@@ -1,9 +1,8 @@
 const { MongoClient } = require('mongodb')
-const MONGODB_URI =
-    `mongodb+srv://tunedinout:7Ah6eKjuVtZBhxiW@serverlessinstance0.pnojtvn.mongodb.net/ ` +
-    `?retryWrites=true&w=majority`
+require('dotenv').config()
+const MONGODB_URI = process.env.MONGODB_URI;
 //  &appName=ServerlessInstance0
-const MONGODB = 'scribbler'
+const MONGODB = 'JS-Scribbler'
 module.exports = (function () {
     /**
      *  Based on the query can retreive items
