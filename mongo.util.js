@@ -1,3 +1,6 @@
+// NOTE: MONGODB NOT BEING USED AT ALL in this
+// At some point mongodb was replaced to be using google drive
+// and indexdb for offline data storage.
 const { MongoClient } = require('mongodb')
 require('dotenv').config()
 const MONGODB_URI = process.env.MONGODB_URI;
