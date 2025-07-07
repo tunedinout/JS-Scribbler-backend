@@ -10,7 +10,7 @@ const {
     validateAccessToken,
     getDriveInstance,
 } = require('./googleApi.util')
-const { verifyIdToken, storeSession, getSession } = require('./session.util')
+const { verifyIdToken } = require('./session.util')
 const {
     encryptToken,
     decryptToken,
@@ -119,9 +119,6 @@ app.post('/auth/google', async (req, res) => {
         // Verify access token
         const userInfo = await verifyIdToken(idToken)
         log(`userinfo`, userInfo)
-        const existingSessionResponse = await getSession(userInfo.email)
-
-        log(`existing session`, existingSessionResponse)
 
         // encrypt access Token, refresh token and idToken
 

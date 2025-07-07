@@ -1,6 +1,7 @@
 const { getAppCredentials, getAuthClient } = require('./googleApi.util');
 const { mongoPost, mongoGet } = require('./mongo.util');
 
+// NOTE: This function is unused
 async function storeSession(
     sessionId,
     userDevice,
@@ -16,6 +17,7 @@ async function storeSession(
     ])
 }
 
+// NOTE: this function is unused
 async function getSession(email) {
     return await mongoGet('users', { email })
 }
