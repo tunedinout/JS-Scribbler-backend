@@ -1,5 +1,8 @@
 const express = require('express')
 const cors = require('cors')
+const session = require('express-session')
+const MongoStore = require('connect-mongo')
+require('dotenv').config()
 const {
     getAppCredentials,
     getUserAuthUrl,
@@ -34,11 +37,29 @@ const SCOPES = [
 ]
 const fs = require('fs')
 const { default: helmet } = require('helmet')
+const { mongoUpsert } = require('./mongo.util')
 
 const app = express()
 app.use(express.json())
-app.use(cors())
+app.use(cors({
+    origin: 'http://localhost:3001',
+    credentials: true,
+}))
 // add CSP headers
+app.use(
+    session({
+        store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI, collectionName: 'sessions' }),
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 2 * 60 * 60 * 1000,
+        },
+    })
+)
 app.use(
     helmet({
         // NOTE: Disabled for local development
@@ -85,7 +106,6 @@ app.get('/auth/google', async (_, res) => {
     const log = logger('/auth/google - GET')
     try {
         const authURL = await getUserAuthUrl(SCOPES, { prompt: 'consent' })
-
         res.setHeader('Access-Control-Allow-Origin', '*')
         log(`the auth url : `, authURL)
         res.status(200).send({ authURL })
@@ -94,7 +114,69 @@ app.get('/auth/google', async (_, res) => {
         res.status(500).send({ message: error })
     }
 })
+app.get(`/oauth2callback`, async (req, res) => {
+    const log = logger('/oauth2callback - GET')
 
+    try {
+        // create oauth2 client
+        const { code: authCode, return: returnPath } = req.query
+        const oauth2Client = await getAuthClient()
+        const oauth2ClientAccessTokenRespose = await oauth2Client.getToken(
+            authCode
+        )
+        log('oauth2ClientAccessTokenRespose', oauth2ClientAccessTokenRespose)
+        const {
+            access_token: accessToken,
+            expiry_date: expiryDate,
+            refresh_token: refreshToken,
+            id_token: idToken,
+        } = oauth2ClientAccessTokenRespose.tokens
+        // get email from access token
+
+        // Verify access token
+        const userInfo = await verifyIdToken(idToken)
+        log(`userinfo`, userInfo)
+        const {sub: googleId, email,name} = userInfo
+        const user = await mongoUpsert('users',{id: googleId}, {
+            email,
+            name,
+        })
+        log(`mongoUpsert user`, user)
+        await mongoUpsert('googleTokens',{userId: user.id,}, {
+            accessToken,
+            expiryDate,
+            refreshToken
+        })
+        req.session.user = user
+        req.session.save((err) => {
+            if (err) {
+                log(`session save error`, err)
+                return res.status(500).send('Session error')
+            }
+            log(`returnPath`, returnPath)
+        res.redirect('http://localhost:3001')
+        })
+        
+    } catch (error) {
+        console.error(`error occured in post /auth/google`, error)
+        res.status(500).send({ message: error })
+    }
+})
+
+app.get('/api/v1/me', (req, res) => {
+    const user = req.session.user;
+    const log = logger(`/api/v1/me`)
+    log(`req.session`, req.session)
+    log(`user`, req.session.user)
+    if(!user){
+        return res.status(401).send({message: 'Unauthorized'})
+    }else{
+        res.status(200).send({
+            email: user.email,
+            name: user.name
+        })
+    }
+})
 // possibly to see if the authCode is expired
 app.post('/auth/google', async (req, res) => {
     const log = logger(`auth/google - POST`)
@@ -170,7 +252,9 @@ app.post('/auth/google/refresh', async (req, res) => {
         })
     } catch (error) {
         console.error(`failed while refreshing token`, error)
-        res.status(500).send({message: `Something went wrong while refreshing the token. Please try again later.`})
+        res.status(500).send({
+            message: `Something went wrong while refreshing the token. Please try again later.`,
+        })
     }
 })
 

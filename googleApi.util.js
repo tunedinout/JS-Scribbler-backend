@@ -41,7 +41,7 @@ async function getAppCredentials() {
     return {
         client_id: key.client_id,
         client_secret: key.client_secret,
-        redirect_uri: key.redirect_uris[0],
+        redirect_uri: key.redirect_uris[1],
     }
 }
 
