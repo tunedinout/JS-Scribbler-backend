@@ -166,7 +166,9 @@ module.exports = (function () {
         let findResult = await queryCollection(collectionName, query)
         log(`findResult`, findResult)
         if(findResult){
-            return await updateDocument(collectionName, query, upsertObject)
+            const res = await updateDocument(collectionName, query, upsertObject)
+            if(res?.acknowledged) return {...findResult, ...query,...upsertObject}
+            else return null
         }else{
             const addedResult = await addToCollection(collectionName, [{...query, ...upsertObject}]);
             if(addedResult?.insertedCount){

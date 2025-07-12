@@ -6,6 +6,7 @@ const fetch = require('node-fetch')
 const googleAuthLib = require('google-auth-library')
 const { decryptToken, getLogger } = require('./util')
 const { Readable } = require('stream')
+const { mongoGet, mongoUpsert } = require('./mongo.util')
 
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json')
 const logger = getLogger()
@@ -86,15 +87,13 @@ async function getAuthClient() {
  */
 async function folderExistsInDrive(accessToken) {
     const log = logger(`folderExistsInDrive`)
-    const { client_secret: privateKey } = await getAppCredentials()
-    const decryptedAccessToken = decryptToken(accessToken, privateKey)
     const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='scribbler' and trashed=false`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
         {
             method: 'GET',
             headers: {
-                Authorization: `Bearer ${decryptedAccessToken}`,
+                Authorization: `Bearer ${accessToken}`,
             },
         }
     )
@@ -109,15 +108,13 @@ async function folderExistsInDrive(accessToken) {
 
 async function getFolderIdByName(accessToken, name, scribblerFolderId) {
     const log = logger(`getFolderIdByName`)
-    const { client_secret: privateKey } = await getAppCredentials()
-    const decryptedAccessToken = decryptToken(accessToken, privateKey)
     const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='${name}' and trashed=false and '${scribblerFolderId}' in parents`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
         {
             method: 'GET',
             headers: {
-                Authorization: `Bearer ${decryptedAccessToken}`,
+                Authorization: `Bearer ${accessToken}`,
             },
         }
     )
@@ -137,8 +134,6 @@ async function getFolderIdByName(accessToken, name, scribblerFolderId) {
 async function createAppFolderInDrive(accessToken) {
     const log = logger(`createAppFolderInDrive`)
     try {
-        const { client_secret: privateKey } = await getAppCredentials()
-        const decryptedAccessToken = decryptToken(accessToken, privateKey)
 
         const existingFolderId = await folderExistsInDrive(accessToken)
         log(`existingFolderId`, existingFolderId)
@@ -155,7 +150,7 @@ async function createAppFolderInDrive(accessToken) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${decryptedAccessToken}`,
+                        Authorization: `Bearer ${accessToken}`,
                     },
                     body: JSON.stringify(folderMetadata),
                 }
@@ -181,8 +176,6 @@ async function updateScribblerSessionFolder(
     log(`received -> scribblerName`, scribblerName);
     log(`received -> scribblerFolderId`, scribblerFolderId);
     try {
-        const { client_secret: privateKey } = await getAppCredentials()
-        const decryptedAccessToken = decryptToken(accessToken, privateKey)
 
         const existingFolderId = await getFolderIdByName(
             accessToken,
@@ -204,7 +197,7 @@ async function updateScribblerSessionFolder(
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${decryptedAccessToken}`,
+                        Authorization: `Bearer ${accessToken}`,
                     },
                     body: JSON.stringify(folderMetadata),
                 }
@@ -298,11 +291,8 @@ async function saveFileToGoogleDrive(
         const log = logger(`saveFileToGoogleDrive`)
         log(`params`, { filename, fileData }, accessToken, folderId)
 
-        const { client_secret: privateKey } = await getAppCredentials()
-        const decryptedAccessToken = decryptToken(accessToken, privateKey)
-
         const auth = new google.auth.OAuth2()
-        auth.setCredentials({ access_token: decryptedAccessToken })
+        auth.setCredentials({ access_token: accessToken })
 
         const drive = google.drive({ version: 'v3', auth })
         // send this to either update or create file utility
@@ -405,37 +395,34 @@ async function syncFileDataFromDrive(folderId, accessToken) {
  * @param {string} accessToken  - encrypted access token
  */
 async function getDriveInstance(accessToken) {
-    const { client_secret: privateKey } = await getAppCredentials()
-    const decryptedAccessToken = decryptToken(accessToken, privateKey)
 
     const auth = new google.auth.OAuth2()
-    auth.setCredentials({ access_token: decryptedAccessToken })
+    auth.setCredentials({ access_token: accessToken })
 
     const drive = google.drive({ version: 'v3', auth })
     return drive
 }
 
-/**
- * Takes an encrypted accessToken decrypts and validates it
- * via oauth2
- * @param {String} accessToken
- * @returns
- */
-async function validateAccessToken(accessToken) {
-    const log = logger(`validateAccessToken`)
-    try {
-        const { client_secret: privateKey } = await getAppCredentials()
-        const oauth2Client = await getAuthClient()
-        const decryptedAccessToken = decryptToken(accessToken, privateKey)
-        oauth2Client.setCredentials({ access_token: decryptedAccessToken })
-        const tokenInfo = await oauth2Client.getTokenInfo(decryptedAccessToken)
+async function validateUserSession(userId) {
+    const log = logger(`validateAccessToken1`)
+    const existingTokenRecord = await mongoGet('googleTokens',{userId});
+    log(`existingTokenRecord`, existingTokenRecord)
+    const {expiryDate: expiry_date,refreshToken: refresh_token} = existingTokenRecord
+    if(expiry_date < Date.now()){
+        log(`token expired`)
+        // token expiration
+        const client = await getAuthClient()
+        client.setCredentials({
+            refresh_token
+        })
+        const credentialResponse = await client.getAccessToken()
+        const {accessToken, refreshToken, expiryDate} = credentialResponse;
 
-        log(`Token valid for client`, tokenInfo.aud)
-        return true
-    } catch (error) {
-        log(`error validating access token`, error)
-        return false
-    }
+        await mongoUpsert(`googleTokens`, {userId}, {accessToken,refreshToken,expiryDate})
+        return credentialResponse
+    }else
+    return existingTokenRecord
+    
 }
 
 /**
@@ -487,4 +474,5 @@ module.exports = {
     syncFileDataFromDrive,
     validateAccessToken,
     getMimeType,
+    validateUserSession
 }
