@@ -405,24 +405,33 @@ async function getDriveInstance(accessToken) {
 
 async function validateUserSession(userId) {
     const log = logger(`validateAccessToken1`)
-    const existingTokenRecord = await mongoGet('googleTokens',{userId});
-    log(`existingTokenRecord`, existingTokenRecord)
-    const {expiryDate: expiry_date,refreshToken: refresh_token} = existingTokenRecord
-    if(expiry_date < Date.now()){
-        log(`token expired`)
-        // token expiration
-        const client = await getAuthClient()
-        client.setCredentials({
-            refresh_token
-        })
-        const credentialResponse = await client.getAccessToken()
-        const {accessToken, refreshToken, expiryDate} = credentialResponse;
+    try {
+        
+        const existingTokenRecord = await mongoGet('googleTokens', { userId })
+        log(`existingTokenRecord`, existingTokenRecord)
+        const { expiryDate: expiry_date, refreshToken: refresh_token } =
+            existingTokenRecord
+        if (expiry_date < Date.now()) {
+            log(`token expired`)
+            // token expiration
+            const client = await getAuthClient()
+            client.setCredentials({
+                refresh_token,
+            })
+            const credentialResponse = await client.getAccessToken()
+            const { accessToken, refreshToken, expiryDate } = credentialResponse
 
-        await mongoUpsert(`googleTokens`, {userId}, {accessToken,refreshToken,expiryDate})
-        return credentialResponse
-    }else
-    return existingTokenRecord
-    
+            await mongoUpsert(
+                `googleTokens`,
+                { userId },
+                { accessToken, refreshToken, expiryDate }
+            )
+            return credentialResponse
+        } else return existingTokenRecord
+    } catch (res) {
+        log(`errror`, res)
+        return {accessToken: null, refreshToken: null, expiryDate: null}
+    } 
 }
 
 /**
@@ -472,7 +481,6 @@ module.exports = {
     createInitialFiles,
     saveFileToGoogleDrive,
     syncFileDataFromDrive,
-    validateAccessToken,
     getMimeType,
     validateUserSession
 }
