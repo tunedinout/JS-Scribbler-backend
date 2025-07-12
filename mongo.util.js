@@ -1,8 +1,10 @@
 // NOTE: MONGODB NOT BEING USED AT ALL in this
 // At some point mongodb was replaced to be using google drive
 // and indexdb for offline data storage.
-const { MongoClient } = require('mongodb')
+const { MongoClient } = require('mongodb');
+const { getLogger } = require('./util');
 require('dotenv').config()
+const logger = getLogger(`mongoUtils`)
 const MONGODB_URI = process.env.MONGODB_URI;
 //  &appName=ServerlessInstance0
 const MONGODB = 'JS-Scribbler'
@@ -159,10 +161,29 @@ module.exports = (function () {
         }
     }
 
+    const upsert  = async (collectionName,query, upsertObject ) => {
+        const log = logger(`mongoUpsert`)
+        let findResult = await queryCollection(collectionName, query)
+        log(`findResult`, findResult)
+        if(findResult){
+            const res = await updateDocument(collectionName, query, upsertObject)
+            if(res?.acknowledged) return {...findResult, ...query,...upsertObject}
+            else return null
+        }else{
+            const addedResult = await addToCollection(collectionName, [{...query, ...upsertObject}]);
+            if(addedResult?.insertedCount){
+                return {...query,...upsertObject}
+            }else{
+                return null
+            }
+        }
+    }
+
     return {
         mongoGet: queryCollection,
         mongoPost: addToCollection,
         mongoDelete: deleteDocuments,
         mongoUpdateOne: updateDocument,
+        mongoUpsert: upsert
     }
 })()
