@@ -319,8 +319,7 @@ async function getDriveInstance(accessToken) {
 }
 
 async function validateUserSession(userId) {
-    
-    const log = logger([loggingContext.googleApisUtils.validateUserSession, getCallerFunctionName()])
+    const log = logger(...[loggingContext.googleApisUtils.validateUserSession, getCallerFunctionName()])
     try {
         
         const existingTokenRecord = await mongoGet('googleTokens', { userId })

@@ -41,6 +41,7 @@ app.use(
     session({
         store: MongoStore.create({
             mongoUrl: process.env.MONGODB_URI,
+            dbName: 'JS-Scribbler',
             collectionName: 'sessions',
         }),
         secret: process.env.SESSION_SECRET,
