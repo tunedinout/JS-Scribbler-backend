@@ -4,12 +4,12 @@ const process = require('process')
 const { google } = require('googleapis')
 const fetch = require('node-fetch')
 const googleAuthLib = require('google-auth-library')
-const { decryptToken, getLogger } = require('./util')
+const { getLogger } = require('./util')
 const { Readable } = require('stream')
 const { mongoGet, mongoUpsert } = require('./mongo.util')
 
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json')
-const logger = getLogger()
+const logger = getLogger(`googleApi.util.js`)
 
 /**
  * Lists the names and IDs of up to 10 files.
@@ -213,55 +213,6 @@ async function updateScribblerSessionFolder(
         throw error
     }
 }
-
-async function createInitialFiles(accessToken, scribblerSessionId) {
-    const log = logger(`createInitialFiles`)
-    const { client_secret: privateKey } = await getAppCredentials()
-    const decryptedAccessToken = decryptToken(accessToken, privateKey)
-    const files = {
-        'index.js': 'text/javascript',
-        'index.html': 'text/html',
-        'index.css': 'text/css',
-    }
-
-    for (const [name, mimeType] of Object.entries(files)) {
-        const fileMetadata = {
-            name,
-            mimeType,
-            // scribbler session folder id
-            parents: [scribblerSessionId],
-        }
-        let response
-
-        try {
-            response = await fetch(
-                'https://www.googleapis.com/drive/v3/files',
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${decryptedAccessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(fileMetadata),
-                }
-            ).then((res) => res.json())
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP error! status: ${response.status}, ${
-                        response?.message || response?.error?.message
-                    }`
-                )
-            }
-
-            return response
-        } catch (error) {
-            log(`Error creating file`, error)
-            throw error
-        }
-    }
-}
-
 // TODO: update this to do the work
 // saving file delete newly created onece
 
@@ -355,43 +306,6 @@ async function saveFileToGoogleDrive(
 
 /**
  *
- * @param {string} folderId - app backup folder id in users gdrive
- * @param {*} accessToken - encrypted access token
- * @returns {Array} - {id, name, data}
- */
-async function syncFileDataFromDrive(folderId, accessToken) {
-    try {
-        const log = logger('syncFileDataFromDrive - params')
-        log(`params`, `|${folderId}|`, `|${accessToken}|`)
-        const drive = await getDriveInstance(accessToken)
-        const response = await drive.files.list({
-            q: `'${folderId}' in parents and trashed=false`,
-            fields: 'files(name, mimeType, id, modifiedTime)',
-        })
-
-        log(`response`, response.data)
-
-        const files = response.data.files
-
-        // retrive data for all files
-        const filesWithData = await Promise.all(
-            files.map(async (file) => {
-                const { id: fileId } = file
-                const filesResponse = await drive.files.get({
-                    fileId,
-                    alt: 'media',
-                })
-                return { ...file, data: filesResponse.data }
-            })
-        )
-        return filesWithData
-    } catch (error) {
-        throw error
-    }
-}
-
-/**
- *
  * @param {string} accessToken  - encrypted access token
  */
 async function getDriveInstance(accessToken) {
@@ -468,7 +382,6 @@ async function validateUserSession(userId) {
 
     return mimeType
 }
-// authorize().then(listFiles).catch(console.error);
 
 module.exports = {
     listFiles,
@@ -478,9 +391,7 @@ module.exports = {
     getDriveInstance,
     createAppFolderInDrive,
     updateScribblerSessionFolder,
-    createInitialFiles,
     saveFileToGoogleDrive,
-    syncFileDataFromDrive,
     getMimeType,
     validateUserSession
 }

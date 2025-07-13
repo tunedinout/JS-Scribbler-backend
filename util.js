@@ -1,21 +1,6 @@
 const crypto = require('crypto')
 
 let logger = getLogger('index.js', 'root file')
-const encryptAndConvertToBase64 = (token, privateKey) => {
-    const cipher = crypto.createCipher('aes-256-cbc', privateKey)
-    let base64Encrypted = cipher.update(token, 'utf8', 'base64')
-    base64Encrypted += cipher.final('base64')
-
-    return base64Encrypted
-}
-
-const decryptFromBase64 = (base64Token, privateKey) => {
-    const decipher = crypto.createDecipher('aes-256-cbc', privateKey)
-    let decrypted = decipher.update(base64Token, 'base64', 'utf8')
-    decrypted += decipher.final('utf8')
-
-    return decrypted
-}
 
 function log(...intialArguments) {
     const prefixedInitialArgs = intialArguments.map((arg) => `[${arg}]`)
@@ -72,8 +57,6 @@ function getAccessTokenFromRequestHeader(req) {
 }
 
 module.exports = {
-    encryptToken: encryptAndConvertToBase64,
-    decryptToken: decryptFromBase64,
     getLogger,
     cleanFolderId,
     sanitizeHTML,
