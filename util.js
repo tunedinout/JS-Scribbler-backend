@@ -1,4 +1,5 @@
 const crypto = require('crypto')
+const { enabledLoggingContexts } = require('./constants')
 
 let logger = getLogger('index.js', 'root file')
 
@@ -8,11 +9,20 @@ function log(...intialArguments) {
         console.log(`${prefixedInitialArgs.join('')}`, ...remainingArguments)
     }
 }
+function getCallerFunctionName() {
+  const err = new Error();
+  const stackLines = err.stack?.split('\n') ?? [];
+
+  // Look for the 3rd line (0 is Error, 1 is this func, 2 is caller)
+  const callerLine = stackLines[3] || '';
+  const match = callerLine.match(/at\s+(.*)\s+\(/);
+  return match ? match[1] : 'anonymous';
+}
 
 function getLogger(...globalPrefix) {
     return function (...localPrefix) {
         return function (...params) {
-            console.log(
+            localPrefix.every( prefix => enabledLoggingContexts.includes(prefix)) && console.log(
                 '\x1b[36m',
                 `${[...globalPrefix, ...localPrefix]
                     .map((pref) => `[ ${pref} ]`)
@@ -61,4 +71,5 @@ module.exports = {
     cleanFolderId,
     sanitizeHTML,
     getAccessTokenFromRequestHeader,
+    getCallerFunctionName
 }

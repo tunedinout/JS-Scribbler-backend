@@ -26,6 +26,7 @@ const SCOPES = [
 const fs = require('fs')
 const { default: helmet } = require('helmet')
 const { mongoUpsert, mongoGet } = require('./mongo.util')
+const { loggingContext } = require('./constants')
 
 const app = express()
 app.use(express.json())
@@ -90,13 +91,13 @@ app.use(
         },
     })
 )
-let logger = getLogger('index.js', 'root file')
+let logger = getLogger(loggingContext.apis.self)
 
 // send auth url to ui for user login and
 // consent screen
-app.get('/auth/google', async (_, res) => {
+app.get('/auth/google', async function authGet(_, res) {
     // delete any existing session data
-    const log = logger('/auth/google - GET')
+    const log = logger(loggingContext.apis.authGet)
     try {
         const authURL = await getUserAuthUrl(SCOPES, { prompt: 'consent' })
         res.setHeader('Access-Control-Allow-Origin', '*')
@@ -107,8 +108,8 @@ app.get('/auth/google', async (_, res) => {
         res.status(500).send({ message: error })
     }
 })
-app.get(`/oauth2callback`, async (req, res) => {
-    const log = logger('/oauth2callback - GET')
+app.get(`/oauth2callback`, async function authCallbackGet(req, res) {
+    const log = logger(loggingContext.apis.authCallbackGet)
 
     try {
         // create oauth2 client
@@ -163,8 +164,8 @@ app.get(`/oauth2callback`, async (req, res) => {
     }
 })
 
-app.get('/api/v1/me', async (req, res) => {
-    const log = logger(`/api/v1/me`)
+app.get('/api/v1/me', async function authMeGet(req, res) {
+    const log = logger(loggingContext.apis.authMeGet)
     const userId = req.session.userId
     log(`userId`, req.session.userId)
     const { accessToken } = await validateUserSession(req.session.userId)
@@ -195,9 +196,9 @@ app.get('/api/v1/me', async (req, res) => {
     }
 })
 
-app.post('/drive/create/folder', async (req, res) => {
+app.post('/drive/create/folder', async function driveCreateFolderPost(req, res){
     try {
-        const log = logger(`/drive/create/folder`)
+        const log = logger(loggingContext.apis.driveCreateFolderPost)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
@@ -217,9 +218,9 @@ app.post('/drive/create/folder', async (req, res) => {
 // create a folder for a new scribbler
 
 // user can get the files inside
-app.post('/drive/folder/session', async (req, res) => {
+app.post('/drive/folder/session', async function driveFolderSessionPost(req, res) {
     try {
-        const log = logger(`/drive/folder/session`)
+        const log = logger(loggingContext.apis.driveFolderSessionPost)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
@@ -289,9 +290,9 @@ app.post('/drive/folder/session', async (req, res) => {
     }
 })
 
-app.put('/drive/folder/session/:scribblerSessionId', async (req, res) => {
+app.put('/drive/folder/session/:scribblerSessionId', async function driveFolderSessionPutOne(req, res) {
     try {
-        const log = logger(`/drive/create/folder/session - PUT`)
+        const log = logger(loggingContext.apis.driveFolderSessionPutOne)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
@@ -337,8 +338,8 @@ app.put('/drive/folder/session/:scribblerSessionId', async (req, res) => {
 })
 
 // send all the existing session names ids and timestamp
-app.get('/drive/folder/sessions', async (req, res) => {
-    const log = logger('/drive/folder/sessions')
+app.get('/drive/folder/sessions', async function driveFolderSessionsGet(req, res) {
+    const log = logger(loggingContext.apis.driveFolderSessionsGet)
     try {
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
@@ -370,8 +371,8 @@ app.get('/drive/folder/sessions', async (req, res) => {
 })
 
 // get js, html, css from a particular scribbler session
-app.get(`/drive/folder/sessions/:id`, async (req, res) => {
-    const log = logger(`/drive/folder/session/:id`)
+app.get(`/drive/folder/sessions/:id`, async function driveFolderSessionsGetOne(req, res) {
+    const log = logger(loggingContext.apis.driveFolderSessionsGetOne)
     try {
         // each scribbler session is folder in the google drive
         const { id: scribblerSesionId } = req.params
