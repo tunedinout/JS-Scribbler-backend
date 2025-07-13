@@ -1,21 +1,7 @@
 const crypto = require('crypto')
+const { enabledLoggingContexts } = require('./constants')
 
 let logger = getLogger('index.js', 'root file')
-const encryptAndConvertToBase64 = (token, privateKey) => {
-    const cipher = crypto.createCipher('aes-256-cbc', privateKey)
-    let base64Encrypted = cipher.update(token, 'utf8', 'base64')
-    base64Encrypted += cipher.final('base64')
-
-    return base64Encrypted
-}
-
-const decryptFromBase64 = (base64Token, privateKey) => {
-    const decipher = crypto.createDecipher('aes-256-cbc', privateKey)
-    let decrypted = decipher.update(base64Token, 'base64', 'utf8')
-    decrypted += decipher.final('utf8')
-
-    return decrypted
-}
 
 function log(...intialArguments) {
     const prefixedInitialArgs = intialArguments.map((arg) => `[${arg}]`)
@@ -23,11 +9,20 @@ function log(...intialArguments) {
         console.log(`${prefixedInitialArgs.join('')}`, ...remainingArguments)
     }
 }
+function getCallerFunctionName() {
+  const err = new Error();
+  const stackLines = err.stack?.split('\n') ?? [];
+
+  // Look for the 3rd line (0 is Error, 1 is this func, 2 is caller)
+  const callerLine = stackLines[3] || '';
+  const match = callerLine.match(/at\s+(.*)\s+\(/);
+  return match ? match[1] : 'anonymous';
+}
 
 function getLogger(...globalPrefix) {
     return function (...localPrefix) {
         return function (...params) {
-            console.log(
+            localPrefix.every( prefix => enabledLoggingContexts.includes(prefix)) && console.log(
                 '\x1b[36m',
                 `${[...globalPrefix, ...localPrefix]
                     .map((pref) => `[ ${pref} ]`)
@@ -72,10 +67,9 @@ function getAccessTokenFromRequestHeader(req) {
 }
 
 module.exports = {
-    encryptToken: encryptAndConvertToBase64,
-    decryptToken: decryptFromBase64,
     getLogger,
     cleanFolderId,
     sanitizeHTML,
     getAccessTokenFromRequestHeader,
+    getCallerFunctionName
 }

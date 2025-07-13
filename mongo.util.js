@@ -3,8 +3,9 @@
 // and indexdb for offline data storage.
 const { MongoClient } = require('mongodb');
 const { getLogger } = require('./util');
+const { loggingContext } = require('./constants');
 require('dotenv').config()
-const logger = getLogger(`mongoUtils`)
+const logger = getLogger(loggingContext.mongoUtils.self)
 const MONGODB_URI = process.env.MONGODB_URI;
 //  &appName=ServerlessInstance0
 const MONGODB = 'JS-Scribbler'
@@ -19,28 +20,29 @@ module.exports = (function () {
      * @param {Function} callback
      * @returns void
      */
-    const queryCollection = async (collectionName, query) => {
+    const mongoGet = async (collectionName, query) => {
+        const log = logger(loggingContext.mongoUtils.mongoGet)
         const client = new MongoClient(MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         })
         let result, session
         try {
-            console.log('queryCollection 1')
+           log('1')
             await client.connect()
             session = client.startSession()
-            console.log('queryCollection 2')
+            log('2')
             !session.hasEnded && session.startTransaction()
-            console.log('queryCollection 3')
+            log('3')
             const db = client.db(MONGODB)
             const collection = db.collection(collectionName)
             result = await collection.findOne(query)
-            console.log('queryCollection 4', result)
+            log('4', result)
             !session.hasEnded && session.commitTransaction()
-            console.log('queryCollection 6')
+            log('6')
         } catch (error) {
-            console.log('queryCollection 5')
-            console.log(`querying connection failed....`, error)
+            log('5')
+            log(`querying connection failed....`, error)
             if(!session.hasEnded){
                 await session.abortTransaction()
             }
@@ -61,7 +63,8 @@ module.exports = (function () {
      *
      * @returns {Promise} A promise that resolves to mondodb result obj of the operation
      */
-    const addToCollection = async (collectionName, mongoDocuments = []) => {
+    const mongoPost = async (collectionName, mongoDocuments = []) => {
+        const log = logger(loggingContext.mongoUtils.mongoPost)
         const client = new MongoClient(MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -77,7 +80,7 @@ module.exports = (function () {
             result = await collection.insertMany(mongoDocuments)
             await session.commitTransaction()
         } catch (error) {
-            console.error(`querying connection failed....`, error)
+            log(`querying connection failed....`, error)
             if(!session.hasEnded)
             await session.abortTransaction()
             result = error
@@ -93,7 +96,8 @@ module.exports = (function () {
      * @param {*} callback
      */
 
-    const deleteDocuments = async (collectionName, filter) => {
+    const mongoDelete = async (collectionName, filter) => {
+        const log = logger(loggingContext.mongoUtils.mongoDelete)
         const client = new MongoClient(MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -127,11 +131,12 @@ module.exports = (function () {
      * @param {*} query
      * @param {*} options
      */
-    const updateDocument = async (
+    const mongoUpdateOne = async (
         collectionName,
         query,
         updatedFieldsObject
     ) => {
+        // const log = logger(loggingContext.mongoUtils.mongoUpdateOne)
         const client = new MongoClient(MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -161,16 +166,16 @@ module.exports = (function () {
         }
     }
 
-    const upsert  = async (collectionName,query, upsertObject ) => {
-        const log = logger(`mongoUpsert`)
-        let findResult = await queryCollection(collectionName, query)
+    const mongoUpsert  = async (collectionName,query, upsertObject ) => {
+        const log = logger(loggingContext.mongoUtils.mongoUpsert)
+        let findResult = await mongoGet(collectionName, query)
         log(`findResult`, findResult)
         if(findResult){
-            const res = await updateDocument(collectionName, query, upsertObject)
+            const res = await mongoUpdateOne(collectionName, query, upsertObject)
             if(res?.acknowledged) return {...findResult, ...query,...upsertObject}
             else return null
         }else{
-            const addedResult = await addToCollection(collectionName, [{...query, ...upsertObject}]);
+            const addedResult = await mongoPost(collectionName, [{...query, ...upsertObject}]);
             if(addedResult?.insertedCount){
                 return {...query,...upsertObject}
             }else{
@@ -180,10 +185,10 @@ module.exports = (function () {
     }
 
     return {
-        mongoGet: queryCollection,
-        mongoPost: addToCollection,
-        mongoDelete: deleteDocuments,
-        mongoUpdateOne: updateDocument,
-        mongoUpsert: upsert
+        mongoGet: mongoGet,
+        mongoPost: mongoPost,
+        mongoDelete: mongoDelete,
+        mongoUpdateOne: mongoUpdateOne,
+        mongoUpsert: mongoUpsert
     }
 })()

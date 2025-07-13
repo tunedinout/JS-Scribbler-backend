@@ -4,19 +4,20 @@ const process = require('process')
 const { google } = require('googleapis')
 const fetch = require('node-fetch')
 const googleAuthLib = require('google-auth-library')
-const { decryptToken, getLogger } = require('./util')
+const { getLogger, getCallerFunctionName } = require('./util')
 const { Readable } = require('stream')
 const { mongoGet, mongoUpsert } = require('./mongo.util')
+const { loggingContext } = require('./constants')
 
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json')
-const logger = getLogger()
+const logger = getLogger(loggingContext.googleApisUtils.self)
 
 /**
  * Lists the names and IDs of up to 10 files.
  * @param {OAuth2Client} authClient An authorized OAuth2 client.
  */
 async function listFiles(authClient) {
-    const log = logger(`listFiles`)
+    const log = logger(loggingContext.googleApisUtils.listFiles)
     const drive = google.drive({ version: 'v3', auth: authClient })
     const res = await drive.files.list({
         pageSize: 10,
@@ -86,7 +87,7 @@ async function getAuthClient() {
  * @returns {String|null} folder id if it exists otherwise null
  */
 async function folderExistsInDrive(accessToken) {
-    const log = logger(`folderExistsInDrive`)
+    const log = logger(loggingContext.googleApisUtils.folderExistsInDrive)
     const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='scribbler' and trashed=false`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
@@ -107,7 +108,7 @@ async function folderExistsInDrive(accessToken) {
 }
 
 async function getFolderIdByName(accessToken, name, scribblerFolderId) {
-    const log = logger(`getFolderIdByName`)
+    const log = logger(loggingContext.googleApisUtils.get)
     const queryString = `q=mimeType='application/vnd.google-apps.folder' and name='${name}' and trashed=false and '${scribblerFolderId}' in parents`
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?${queryString}`,
@@ -132,7 +133,7 @@ async function getFolderIdByName(accessToken, name, scribblerFolderId) {
  * @param {string} accessToken - encrypted access token
  */
 async function createAppFolderInDrive(accessToken) {
-    const log = logger(`createAppFolderInDrive`)
+    const log = logger(loggingContext.googleApisUtils.createAppFolderInDrive)
     try {
 
         const existingFolderId = await folderExistsInDrive(accessToken)
@@ -172,7 +173,7 @@ async function updateScribblerSessionFolder(
     scribblerName,
     scribblerFolderId
 ) {
-    const log = logger(`updateScribblerSessionFolder`);
+    const log = logger(loggingContext.googleApisUtils.updateScribblerSessionFolder);
     log(`received -> scribblerName`, scribblerName);
     log(`received -> scribblerFolderId`, scribblerFolderId);
     try {
@@ -213,55 +214,6 @@ async function updateScribblerSessionFolder(
         throw error
     }
 }
-
-async function createInitialFiles(accessToken, scribblerSessionId) {
-    const log = logger(`createInitialFiles`)
-    const { client_secret: privateKey } = await getAppCredentials()
-    const decryptedAccessToken = decryptToken(accessToken, privateKey)
-    const files = {
-        'index.js': 'text/javascript',
-        'index.html': 'text/html',
-        'index.css': 'text/css',
-    }
-
-    for (const [name, mimeType] of Object.entries(files)) {
-        const fileMetadata = {
-            name,
-            mimeType,
-            // scribbler session folder id
-            parents: [scribblerSessionId],
-        }
-        let response
-
-        try {
-            response = await fetch(
-                'https://www.googleapis.com/drive/v3/files',
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${decryptedAccessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(fileMetadata),
-                }
-            ).then((res) => res.json())
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP error! status: ${response.status}, ${
-                        response?.message || response?.error?.message
-                    }`
-                )
-            }
-
-            return response
-        } catch (error) {
-            log(`Error creating file`, error)
-            throw error
-        }
-    }
-}
-
 // TODO: update this to do the work
 // saving file delete newly created onece
 
@@ -288,7 +240,7 @@ async function saveFileToGoogleDrive(
      * 5. else create a new file in gdrive in the folder <FolderId>
      */
     try {
-        const log = logger(`saveFileToGoogleDrive`)
+        const log = logger(loggingContext.googleApisUtils.saveFileToGoogleDrive)
         log(`params`, { filename, fileData }, accessToken, folderId)
 
         const auth = new google.auth.OAuth2()
@@ -355,43 +307,6 @@ async function saveFileToGoogleDrive(
 
 /**
  *
- * @param {string} folderId - app backup folder id in users gdrive
- * @param {*} accessToken - encrypted access token
- * @returns {Array} - {id, name, data}
- */
-async function syncFileDataFromDrive(folderId, accessToken) {
-    try {
-        const log = logger('syncFileDataFromDrive - params')
-        log(`params`, `|${folderId}|`, `|${accessToken}|`)
-        const drive = await getDriveInstance(accessToken)
-        const response = await drive.files.list({
-            q: `'${folderId}' in parents and trashed=false`,
-            fields: 'files(name, mimeType, id, modifiedTime)',
-        })
-
-        log(`response`, response.data)
-
-        const files = response.data.files
-
-        // retrive data for all files
-        const filesWithData = await Promise.all(
-            files.map(async (file) => {
-                const { id: fileId } = file
-                const filesResponse = await drive.files.get({
-                    fileId,
-                    alt: 'media',
-                })
-                return { ...file, data: filesResponse.data }
-            })
-        )
-        return filesWithData
-    } catch (error) {
-        throw error
-    }
-}
-
-/**
- *
  * @param {string} accessToken  - encrypted access token
  */
 async function getDriveInstance(accessToken) {
@@ -404,7 +319,7 @@ async function getDriveInstance(accessToken) {
 }
 
 async function validateUserSession(userId) {
-    const log = logger(`validateAccessToken1`)
+    const log = logger(...[loggingContext.googleApisUtils.validateUserSession, getCallerFunctionName()])
     try {
         
         const existingTokenRecord = await mongoGet('googleTokens', { userId })
@@ -439,7 +354,7 @@ async function validateUserSession(userId) {
  *
  */
  function getMimeType(filename) {
-    const log = logger(`getMimeType`)
+    const log = logger(loggingContext.googleApisUtils.getMimeType)
     log(`received filename `, filename)
     const regex = /^[a-zA-Z][^/]*\.([^./]+)$/
     const match = filename.match(regex)
@@ -468,7 +383,6 @@ async function validateUserSession(userId) {
 
     return mimeType
 }
-// authorize().then(listFiles).catch(console.error);
 
 module.exports = {
     listFiles,
@@ -478,9 +392,7 @@ module.exports = {
     getDriveInstance,
     createAppFolderInDrive,
     updateScribblerSessionFolder,
-    createInitialFiles,
     saveFileToGoogleDrive,
-    syncFileDataFromDrive,
     getMimeType,
     validateUserSession
 }
