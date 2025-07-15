@@ -43,7 +43,7 @@ async function getAppCredentials() {
     return {
         client_id: key.client_id,
         client_secret: key.client_secret,
-        redirect_uri: key.redirect_uris[1],
+        redirect_uri: key.redirect_uris[0],
     }
 }
 
@@ -168,12 +168,12 @@ async function createAppFolderInDrive(accessToken) {
     }
 }
 
-async function updateScribblerSessionFolder(
+async function UpdateScribblerFolder(
     accessToken,
     scribblerName,
     scribblerFolderId
 ) {
-    const log = logger(loggingContext.googleApisUtils.updateScribblerSessionFolder);
+    const log = logger(loggingContext.googleApisUtils.UpdateScribblerFolder);
     log(`received -> scribblerName`, scribblerName);
     log(`received -> scribblerFolderId`, scribblerFolderId);
     try {
@@ -391,7 +391,7 @@ module.exports = {
     getUserAuthUrl,
     getDriveInstance,
     createAppFolderInDrive,
-    updateScribblerSessionFolder,
+    UpdateScribblerFolder,
     saveFileToGoogleDrive,
     getMimeType,
     validateUserSession

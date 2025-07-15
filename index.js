@@ -8,7 +8,7 @@ const {
     getAuthClient,
     createAppFolderInDrive,
     saveFileToGoogleDrive,
-    updateScribblerSessionFolder,
+    UpdateScribblerFolder,
     getDriveInstance,
     validateUserSession,
 } = require('./googleApi.util')
@@ -96,7 +96,7 @@ let logger = getLogger(loggingContext.apis.self)
 
 // send auth url to ui for user login and
 // consent screen
-app.get('/auth/google', async function authGet(_, res) {
+app.get('/api/v1/auth', async function authGet(_, res) {
     // delete any existing session data
     const log = logger(loggingContext.apis.authGet)
     try {
@@ -109,7 +109,7 @@ app.get('/auth/google', async function authGet(_, res) {
         res.status(500).send({ message: error })
     }
 })
-app.get(`/oauth2callback`, async function authCallbackGet(req, res) {
+app.get(`/api/v1/callback`, async function authCallbackGet(req, res) {
     const log = logger(loggingContext.apis.authCallbackGet)
 
     try {
@@ -160,7 +160,7 @@ app.get(`/oauth2callback`, async function authCallbackGet(req, res) {
             res.redirect('http://localhost:3001')
         })
     } catch (error) {
-        console.error(`error occured in post /auth/google`, error)
+        console.error(`error occured in post /api/v1/auth`, error)
         res.status(500).send({ message: error })
     }
 })
@@ -197,9 +197,9 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
     }
 })
 
-app.post('/drive/create/folder', async function driveCreateFolderPost(req, res){
+app.post('/api/v1/drive', async function postDrive(req, res){
     try {
-        const log = logger(loggingContext.apis.driveCreateFolderPost)
+        const log = logger(loggingContext.apis.postDrive)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
@@ -219,67 +219,67 @@ app.post('/drive/create/folder', async function driveCreateFolderPost(req, res){
 // create a folder for a new scribbler
 
 // user can get the files inside
-app.post('/drive/folder/session', async function driveFolderSessionPost(req, res) {
+app.post('/api/v1/scribbles', async function postScribble(req, res) {
     try {
-        const log = logger(loggingContext.apis.driveFolderSessionPost)
+        const log = logger(loggingContext.apis.postScribble)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
             const { accessToken } = await validateUserSession(userId)
             log(`accessToken`, accessToken)
             const {
-                scribblerSessionName,
-                scribblerFolderId,
+                name,
+                driveFolderId,
                 js = '',
                 css = '',
                 html = '',
             } = req.body
 
-            log(`scribblerSessionName`, scribblerSessionName)
-            log(`scribblerFolderId`, scribblerFolderId)
+            log(`name`, name)
+            log(`driveFolderId`, driveFolderId)
             log(`js content -> `, js)
             log(`css content -> `, css)
             log(`html content -> `, html)
 
-            if (!scribblerSessionName || !scribblerFolderId) {
+            if (!name || !driveFolderId) {
                 log(`return 401 in response - bad request received.`)
                 return res.status(400).json({
-                    message: `Missing requiredFields scribblerSessionName/scribblerFolderId`,
+                    message: `Missing requiredFields name/driveFolderId`,
                 })
             }
 
-            // if scribblerSessionName folder is not there it will create
-            const scribblerSessionId = await updateScribblerSessionFolder(
+            // if name folder is not there it will create
+            const scribbleId = await UpdateScribblerFolder(
                 accessToken,
-                scribblerSessionName,
-                scribblerFolderId
+                name,
+                driveFolderId
             )
 
             // create default js file
             await saveFileToGoogleDrive(
                 { filename: 'index.js', data: js },
                 accessToken,
-                scribblerSessionId
+                scribbleId
             )
 
             // create the default html file
             await saveFileToGoogleDrive(
                 { filename: 'index.html', data: html },
                 accessToken,
-                scribblerSessionId
+                scribbleId
             )
 
             // create the default css file
             await saveFileToGoogleDrive(
                 { filename: 'index.css', data: css },
                 accessToken,
-                scribblerSessionId
+                scribbleId
             )
-            res.location(`/drive/folder/session/${scribblerSessionId}`)
+            res.location(`/api/v1/scribbles/${scribbleId}`)
             // in update as well maintain consistency
             res.status(201).send({
-                id: scribblerSessionId,
-                name: scribblerSessionName,
+                id: scribbleId,
+                name: name,
                 js,
                 css,
                 html,
@@ -291,34 +291,34 @@ app.post('/drive/folder/session', async function driveFolderSessionPost(req, res
     }
 })
 
-app.put('/drive/folder/session/:scribblerSessionId', async function driveFolderSessionPutOne(req, res) {
+app.put('/api/v1/scribbles/:scribbleId', async function putScribble(req, res) {
     try {
-        const log = logger(loggingContext.apis.driveFolderSessionPutOne)
+        const log = logger(loggingContext.apis.putScribble)
         const userId = req.session.userId
         if (!userId) res.status(401).send({ message: 'unauthorized' })
         else {
             const { accessToken } = await validateUserSession(userId)
 
-            const { scribblerSessionId } = req.params
+            const { scribbleId } = req.params
             const { js = '', css = '', html = '' } = req.body
 
             log(`request.body`, req.body)
 
-            log(`scribblerSessionId`, scribblerSessionId)
+            log(`scribbleId`, scribbleId)
 
             if (js)
                 // create the initial js file
                 await saveFileToGoogleDrive(
                     { filename: 'index.js', data: js },
                     accessToken,
-                    scribblerSessionId
+                    scribbleId
                 )
             if (html)
                 // create the default html file
                 await saveFileToGoogleDrive(
                     { filename: 'index.html', data: html },
                     accessToken,
-                    scribblerSessionId
+                    scribbleId
                 )
 
             if (css)
@@ -326,7 +326,7 @@ app.put('/drive/folder/session/:scribblerSessionId', async function driveFolderS
                 await saveFileToGoogleDrive(
                     { filename: 'index.css', data: css },
                     accessToken,
-                    scribblerSessionId
+                    scribbleId
                 )
 
             // assume successs if not error thrown
@@ -338,42 +338,9 @@ app.put('/drive/folder/session/:scribblerSessionId', async function driveFolderS
     }
 })
 
-// send all the existing session names ids and timestamp
-app.get('/drive/folder/sessions', async function driveFolderSessionsGet(req, res) {
-    const log = logger(loggingContext.apis.driveFolderSessionsGet)
-    try {
-        const userId = req.session.userId
-        if (!userId) res.status(401).send({ message: 'unauthorized' })
-        else {
-            const { accessToken } = await validateUserSession(userId)
-
-            const { scribblerFolderId } = req.query
-
-            log('/drive/folder/sessions -> accessToken', accessToken)
-            log(
-                '/drive/folder/sessions -> scribblerFolderId',
-                scribblerFolderId
-            )
-
-            const drive = await getDriveInstance(accessToken)
-
-            const response = await drive.files.list({
-                q: `'${scribblerFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-                fields: 'files(id,name)',
-            })
-
-            log(`session folders`, response.data)
-            res.status(200).send(response.data.files)
-        }
-    } catch (error) {
-        console.error(`error occurred while backing up files : `, error)
-        res.status(500).send({ message: error.message })
-    }
-})
-
 // get js, html, css from a particular scribbler session
-app.get(`/drive/folder/sessions/:id`, async function driveFolderSessionsGetOne(req, res) {
-    const log = logger(loggingContext.apis.driveFolderSessionsGetOne)
+app.get(`/api/v1/scribbles/:id`, async function getScribblesOne(req, res) {
+    const log = logger(loggingContext.apis.getScribblesOne)
     try {
         // each scribbler session is folder in the google drive
         const { id: scribblerSesionId } = req.params
@@ -413,6 +380,41 @@ app.get(`/drive/folder/sessions/:id`, async function driveFolderSessionsGetOne(r
         res.status(500).send(error)
     }
 })
+
+// send all the existing session names ids and timestamp
+app.get('/api/v1/scribbles', async function getScribbles(req, res) {
+    const log = logger(loggingContext.apis.getScribbles)
+    try {
+        const userId = req.session.userId
+        if (!userId) res.status(401).send({ message: 'unauthorized' })
+        else {
+            const { accessToken } = await validateUserSession(userId)
+
+            const { driveFolderId } = req.query
+
+            log('/api/v1/scribbles -> accessToken', accessToken)
+            log(
+                '/api/v1/scribbles -> driveFolderId',
+                driveFolderId
+            )
+
+            const drive = await getDriveInstance(accessToken)
+
+            const response = await drive.files.list({
+                q: `'${driveFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+                fields: 'files(id,name)',
+            })
+
+            log(`session folders`, response.data)
+            res.status(200).send(response.data.files)
+        }
+    } catch (error) {
+        console.error(`error occurred while backing up files : `, error)
+        res.status(500).send({ message: error.message })
+    }
+})
+
+
 // root endpoint
 app.get('/', (_, res) => {
     res.end()
