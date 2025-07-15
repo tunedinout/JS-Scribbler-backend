@@ -9,7 +9,7 @@ const loggingContext = {
         getDriveInstance: 'getDriveInstance',
         getFolderIdByName: 'getFolderIdByName',
         createAppFolderInDrive: 'createAppFolderInDrive',
-        updateScribblerSessionFolder: 'updateScribblerSessionFolder',
+        UpdateScribblerFolder: 'UpdateScribblerFolder',
         saveFileToGoogleDrive: 'saveFileToGoogleDrive',
         getMimeType: 'getMimeType',
         validateUserSession: 'validateUserSession',
@@ -24,15 +24,15 @@ const loggingContext = {
     },
     apis: {
         self: 'apis',
-        authGet: '/auth/google - GET',
-        authCallbackGet: '/oauth2callback - GET',
+        authGet: '/api/v1/auth - GET',
+        authCallbackGet: '/api/v1/callback - GET',
         authMeGet: '/api/v1/me - GET',
-        driveCreateFolderPost: '/drive/create/folder - POST',
-        driveFolderSessionPost: '/drive/folder/session - POST',
-        driveFolderSessionPutOne:
-            '/drive/folder/session/:scribblerSessionId - Put',
-        driveFolderSessionsGet: '/drive/folder/sessions - GET',
-        driveFolderSessionsGetOne: '/drive/folder/sessions/:id - GET',
+        postDrive: '/api/v1/drive - POST',
+        postScribble: '/api/v1/scribbles - POST',
+        putScribble:
+            '/api/v1/scribbles/:scribblerSessionId - Put',
+        getScribbles: '/api/v1/scribbles - GET',
+        getScribblesOne: '/api/v1/scribbles/:id - GET',
     },
 }
 
