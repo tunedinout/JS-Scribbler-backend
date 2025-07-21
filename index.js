@@ -3,6 +3,7 @@ const cors = require('cors')
 const session = require('express-session')
 const MongoStore = require('connect-mongo')
 require('dotenv').config()
+console.log(process.env)
 const {
     getUserAuthUrl,
     getAuthClient,
@@ -23,7 +24,6 @@ const SCOPES = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
 ]
-const fs = require('fs')
 const { default: helmet } = require('helmet')
 const { mongoUpsert, mongoGet } = require('./mongo.util')
 const { loggingContext } = require('./constants')
@@ -32,7 +32,7 @@ const app = express()
 app.use(express.json())
 app.use(
     cors({
-        origin: 'http://localhost:3001',
+        origin: process.env.GCP_CALLBACK_REDIRECT_URI,
         credentials: true,
     })
 )
@@ -41,8 +41,8 @@ app.use(
     session({
         store: MongoStore.create({
             mongoUrl: process.env.MONGODB_URI,
-            dbName: 'JS-Scribbler',
-            collectionName: 'sessions',
+            dbName: process.env.DB_NAME,
+            collectionName: process.env.DB_SESSION_NAME,
         }),
         secret: process.env.SESSION_SECRET,
         resave: false,
@@ -157,7 +157,7 @@ app.get(`/api/v1/callback`, async function authCallbackGet(req, res) {
                 return res.status(500).send('Session error')
             }
             log(`returnPath`, returnPath)
-            res.redirect('http://localhost:3001')
+            res.redirect(process.env.GCP_CALLBACK_REDIRECT_URI)
         })
     } catch (error) {
         console.error(`error occured in post /api/v1/auth`, error)

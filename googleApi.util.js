@@ -8,8 +8,7 @@ const { getLogger, getCallerFunctionName } = require('./util')
 const { Readable } = require('stream')
 const { mongoGet, mongoUpsert } = require('./mongo.util')
 const { loggingContext } = require('./constants')
-
-const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json')
+require('dotenv').config()
 const logger = getLogger(loggingContext.googleApisUtils.self)
 
 /**
@@ -37,13 +36,10 @@ async function listFiles(authClient) {
  * @returns {Object} {client_id, client_secret, redirect_uri}
  */
 async function getAppCredentials() {
-    const content = await fs.readFile(CREDENTIALS_PATH)
-    const keys = JSON.parse(content)
-    const key = keys.installed || keys.web
     return {
-        client_id: key.client_id,
-        client_secret: key.client_secret,
-        redirect_uri: key.redirect_uris[0],
+        client_id: process.env.GCP_CLIENT_ID,
+        client_secret:  process.env.GCP_CLIENT_SECRET,
+        redirect_uri:  process.env.GCP_REDIRECT_URI,
     }
 }
 
