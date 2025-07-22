@@ -1,0 +1,39 @@
+name: Scribbler Backend Worker
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            MONGODB_URI
+            SESSION_SECRET
+            GCP_CLIENT_ID
+            GCP_CLIENT_SECRET
+            GCP_AUTH_URI
+            GCP_TOKEN_URI
+            GCP_REDIRECT_URI
+            GCP_CALLBACK_REDIRECT_URI
+            DB_NAME
+            DB_SESSION_NAME
+        env:
+          MONGODB_URI:                ${{ secrets.MONGODB_URI }}
+          SESSION_SECRET:             ${{ secrets.SESSION_SECRET }}
+          GCP_CLIENT_ID:              ${{ secrets.GCP_CLIENT_ID }}
+          GCP_CLIENT_SECRET:          ${{ secrets.GCP_CLIENT_SECRET }}
+          GCP_AUTH_URI:               ${{ secrets.GCP_AUTH_URI }}
+          GCP_TOKEN_URI:              ${{ secrets.GCP_TOKEN_URI }}
+          GCP_REDIRECT_URI:           ${{ secrets.GCP_REDIRECT_URI }}
+          GCP_CALLBACK_REDIRECT_URI:  ${{ secrets.GCP_CALLBACK_REDIRECT_URI }}
+          DB_NAME:                    ${{ secrets.DB_NAME }}
+          DB_SESSION_NAME:            ${{ secrets.DB_SESSION_NAME }}
