@@ -22,7 +22,7 @@ function getCallerFunctionName() {
 function getLogger(...globalPrefix) {
     return function (...localPrefix) {
         return function (...params) {
-            localPrefix.every( prefix => enabledLoggingContexts.includes(prefix)) && console.log(
+            localPrefix.some( prefix => enabledLoggingContexts.includes(prefix)) && console.log(
                 '\x1b[36m',
                 `${[...globalPrefix, ...localPrefix]
                     .map((pref) => `[ ${pref} ]`)

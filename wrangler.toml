@@ -1,0 +1,4 @@
+name = "js-scribbler-backend"
+main = "index.js"
+compatibility_date = "2025-07-21"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
