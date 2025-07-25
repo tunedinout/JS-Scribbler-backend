@@ -171,30 +171,30 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
     log(`userId`, req.session.userId)
     const { accessToken } = await validateUserSession(req.session.userId)
     log(`accessToken`, accessToken)
-    if (!userId || !accessToken) {
-        req.session.destroy((err) => {
-            if (err) {
-                log(`Session destroy error....`, err)
-                return res
-                    .status(500)
-                    .send({ message: 'Session Cleanup error' })
-            }
+    // if (!userId || !accessToken) {
+    //     req.session.destroy((err) => {
+    //         if (err) {
+    //             log(`Session destroy error....`, err)
+    //             return res
+    //                 .status(500)
+    //                 .send({ message: 'Session Cleanup error' })
+    //         }
 
-            res.clearCookie('connect.sid', {
-                path: '/',
-                httpOnly: true,
-                sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
-                secure: process.env.NODE_ENV === 'production',
-            })
-            return res.status(401).send({ message: 'Unauthorized' })
-        })
-    } else {
+    //         res.clearCookie('connect.sid', {
+    //             path: '/',
+    //             httpOnly: true,
+    //             sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
+    //             secure: process.env.NODE_ENV === 'production',
+    //         })
+    //         return res.status(401).send({ message: 'Unauthorized' })
+    //     })
+    // } else {
         const user = await mongoGet('users', { id: req.session.userId })
         res.status(200).send({
             email: user.email,
             name: user.name,
         })
-    }
+    // }
 })
 
 app.post('/api/v1/drive', async function postDrive(req, res){
