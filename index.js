@@ -29,7 +29,6 @@ const { mongoUpsert, mongoGet } = require('./mongo.util')
 const { loggingContext } = require('./constants')
 
 const app = express()
-app.set('trust proxy', 1)
 app.use(express.json())
 app.use(
     cors({
@@ -56,43 +55,43 @@ app.use(
         },
     })
 )
-// app.use(
-//     helmet({
-//         // NOTE: Disabled for local development
-//         // enable this at the time of deployment
+app.use(
+    helmet({
+        // NOTE: Disabled for local development
+        // enable this at the time of deployment
 
-//         // hosting server might overwrite these check
-//         // at the time of deployment
-//         contentSecurityPolicy: false,
-//         // TODO: Enable this at the time of deployment
-//         // contentSecurityPolicy: {
-//         //     directives: {
-//         //         defaultSrc: ["'self'"],
-//         //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
-//         //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
-//         //         objectSrc: ["'none'"],
-//         //         imgSrc: ["'self'", 'data:'],
-//         //         fontSrc: ["'self'"],
-//         //         frameSrc: ["'none'"],
-//         //         workerSrc: ["'none'"],
-//         //         frameAncestors: ["'none'"],
-//         //         baseUri: ["'self'"],
-//         //         formAction: ["'self'"],
-//         //         upgradeInsecureRequests: [],
-//         //     },
-//         // },
-//         frameguard: {
-//             action: 'sameorigin',
-//         },
-//         hsts: {
-//             maxAge: 63072000, // 2 years, for Strict-Transport-Security
-//             includeSubDomains: true,
-//         },
-//         referrerPolicy: {
-//             policy: 'strict-origin-when-cross-origin',
-//         },
-//     })
-// )
+        // hosting server might overwrite these check
+        // at the time of deployment
+        contentSecurityPolicy: false,
+        // TODO: Enable this at the time of deployment
+        // contentSecurityPolicy: {
+        //     directives: {
+        //         defaultSrc: ["'self'"],
+        //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
+        //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
+        //         objectSrc: ["'none'"],
+        //         imgSrc: ["'self'", 'data:'],
+        //         fontSrc: ["'self'"],
+        //         frameSrc: ["'none'"],
+        //         workerSrc: ["'none'"],
+        //         frameAncestors: ["'none'"],
+        //         baseUri: ["'self'"],
+        //         formAction: ["'self'"],
+        //         upgradeInsecureRequests: [],
+        //     },
+        // },
+        frameguard: {
+            action: 'sameorigin',
+        },
+        hsts: {
+            maxAge: 63072000, // 2 years, for Strict-Transport-Security
+            includeSubDomains: true,
+        },
+        referrerPolicy: {
+            policy: 'strict-origin-when-cross-origin',
+        },
+    })
+)
 let logger = getLogger(loggingContext.apis.self)
 
 // send auth url to ui for user login and
@@ -102,7 +101,7 @@ app.get('/api/v1/auth', async function authGet(_, res) {
     const log = logger(loggingContext.apis.authGet)
     try {
         const authURL = await getUserAuthUrl(SCOPES, { prompt: 'consent' })
-        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN)
         log(`the auth url : `, authURL)
         res.status(200).send({ authURL })
     } catch (error) {
@@ -172,30 +171,30 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
     log(`userId`, req.session.userId)
     const { accessToken } = await validateUserSession(req.session.userId)
     log(`accessToken`, accessToken)
-    // if (!userId || !accessToken) {
-    //     req.session.destroy((err) => {
-    //         if (err) {
-    //             log(`Session destroy error....`, err)
-    //             return res
-    //                 .status(500)
-    //                 .send({ message: 'Session Cleanup error' })
-    //         }
+    if (!userId || !accessToken) {
+        req.session.destroy((err) => {
+            if (err) {
+                log(`Session destroy error....`, err)
+                return res
+                    .status(500)
+                    .send({ message: 'Session Cleanup error' })
+            }
 
-    //         res.clearCookie('connect.sid', {
-    //             path: '/',
-    //             httpOnly: true,
-    //             sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
-    //             secure: process.env.NODE_ENV === 'production',
-    //         })
-    //         return res.status(401).send({ message: 'Unauthorized' })
-    //     })
-    // } else {
+            res.clearCookie('connect.sid', {
+                path: '/',
+                httpOnly: true,
+                sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
+                secure: process.env.NODE_ENV === 'production',
+            })
+            return res.status(401).send({ message: 'Unauthorized' })
+        })
+    } else {
         const user = await mongoGet('users', { id: req.session.userId })
         res.status(200).send({
             email: user.email,
             name: user.name,
         })
-    // }
+    }
 })
 
 app.post('/api/v1/drive', async function postDrive(req, res){
