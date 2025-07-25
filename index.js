@@ -29,6 +29,7 @@ const { mongoUpsert, mongoGet } = require('./mongo.util')
 const { loggingContext } = require('./constants')
 
 const app = express()
+app.set('trust proxy', 1)
 app.use(express.json())
 app.use(
     cors({
