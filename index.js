@@ -43,8 +43,7 @@ app.use(
             mongoUrl: process.env.MONGODB_URI,
             dbName: process.env.DB_NAME,
             collectionName: process.env.DB_SESSION_NAME,
-        })?.then(() => console.log(`session establised`))
-        ?.catch(err => console.log(`unable to create session`, err)),
+        }),
         secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
