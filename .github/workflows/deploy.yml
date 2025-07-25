@@ -9,6 +9,18 @@ jobs:
     name: GCP Deploy
     runs-on: ubuntu-latest
 
+    env:
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      GCP_CLIENT_ID: ${{ secrets.GCP_CLIENT_ID }}
+      GCP_CLIENT_SECRET: ${{ secrets.GCP_CLIENT_SECRET }}
+      GCP_AUTH_URI: ${{ secrets.GCP_AUTH_URI }}
+      GCP_TOKEN_URI: ${{ secrets.GCP_TOKEN_URI }}
+      GCP_REDIRECT_URI: ${{ secrets.GCP_REDIRECT_URI }}
+      GCP_CALLBACK_REDIRECT_URI: ${{ secrets.GCP_CALLBACK_REDIRECT_URI }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_SESSION_NAME: ${{ secrets.DB_SESSION_NAME }}
+
     permissions:
       contents: read
       id-token: write  # Required for Workload Identity Federation (optional)
