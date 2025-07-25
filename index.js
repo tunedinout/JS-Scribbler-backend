@@ -32,7 +32,7 @@ const app = express()
 app.use(express.json())
 app.use(
     cors({
-        origin: process.env.GCP_CALLBACK_REDIRECT_URI,
+        origin: process.env.ALLOWED_ORIGIN,
         credentials: true,
     })
 )
