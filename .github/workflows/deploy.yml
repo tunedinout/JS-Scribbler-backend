@@ -24,7 +24,7 @@ jobs:
 
         permissions:
             contents: read
-            id-token: write # Required for Workload Identity Federation (optional)
+            id-token: write
 
         steps:
             - name: Checkout code
@@ -33,8 +33,8 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: '20' # Update to your Node.js version
-
+                  node-version: '20'
+                #TODO: workload identity federation
             - name: Authenticate to GCP
               uses: google-github-actions/auth@v2
               with:
