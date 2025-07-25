@@ -183,7 +183,7 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
             res.clearCookie('connect.sid', {
                 path: '/',
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
                 secure: false,
             })
             return res.status(401).send({ message: 'Unauthorized' })
