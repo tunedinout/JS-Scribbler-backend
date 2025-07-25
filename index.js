@@ -184,7 +184,7 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
                 path: '/',
                 httpOnly: true,
                 sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
             })
             return res.status(401).send({ message: 'Unauthorized' })
         })
