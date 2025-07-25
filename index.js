@@ -56,43 +56,43 @@ app.use(
         },
     })
 )
-app.use(
-    helmet({
-        // NOTE: Disabled for local development
-        // enable this at the time of deployment
+// app.use(
+//     helmet({
+//         // NOTE: Disabled for local development
+//         // enable this at the time of deployment
 
-        // hosting server might overwrite these check
-        // at the time of deployment
-        contentSecurityPolicy: false,
-        // TODO: Enable this at the time of deployment
-        // contentSecurityPolicy: {
-        //     directives: {
-        //         defaultSrc: ["'self'"],
-        //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
-        //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
-        //         objectSrc: ["'none'"],
-        //         imgSrc: ["'self'", 'data:'],
-        //         fontSrc: ["'self'"],
-        //         frameSrc: ["'none'"],
-        //         workerSrc: ["'none'"],
-        //         frameAncestors: ["'none'"],
-        //         baseUri: ["'self'"],
-        //         formAction: ["'self'"],
-        //         upgradeInsecureRequests: [],
-        //     },
-        // },
-        frameguard: {
-            action: 'sameorigin',
-        },
-        hsts: {
-            maxAge: 63072000, // 2 years, for Strict-Transport-Security
-            includeSubDomains: true,
-        },
-        referrerPolicy: {
-            policy: 'strict-origin-when-cross-origin',
-        },
-    })
-)
+//         // hosting server might overwrite these check
+//         // at the time of deployment
+//         contentSecurityPolicy: false,
+//         // TODO: Enable this at the time of deployment
+//         // contentSecurityPolicy: {
+//         //     directives: {
+//         //         defaultSrc: ["'self'"],
+//         //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
+//         //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
+//         //         objectSrc: ["'none'"],
+//         //         imgSrc: ["'self'", 'data:'],
+//         //         fontSrc: ["'self'"],
+//         //         frameSrc: ["'none'"],
+//         //         workerSrc: ["'none'"],
+//         //         frameAncestors: ["'none'"],
+//         //         baseUri: ["'self'"],
+//         //         formAction: ["'self'"],
+//         //         upgradeInsecureRequests: [],
+//         //     },
+//         // },
+//         frameguard: {
+//             action: 'sameorigin',
+//         },
+//         hsts: {
+//             maxAge: 63072000, // 2 years, for Strict-Transport-Security
+//             includeSubDomains: true,
+//         },
+//         referrerPolicy: {
+//             policy: 'strict-origin-when-cross-origin',
+//         },
+//     })
+// )
 let logger = getLogger(loggingContext.apis.self)
 
 // send auth url to ui for user login and
