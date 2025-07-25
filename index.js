@@ -420,6 +420,6 @@ app.get('/', (_, res) => {
     res.end()
 })
 
-app.listen(3000, async () => {
-    console.log(`server running.... at ${3000}`)
+app.listen(process.env.PORT || 3000, async () => {
+    console.log(`server running.... at ${process.env.PORT || 3000}`)
 })
