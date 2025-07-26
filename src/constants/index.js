@@ -12,7 +12,7 @@ const loggingContext = {
     UpdateScribblerFolder: 'UpdateScribblerFolder',
     saveFileToGoogleDrive: 'saveFileToGoogleDrive',
     getMimeType: 'getMimeType',
-    validateUserSession: 'validateUserSession'
+    validateUserSession: 'validateUserSession',
   },
   mongoUtils: {
     self: 'mongoUtils',
@@ -20,7 +20,7 @@ const loggingContext = {
     mongoPost: 'mongoPost',
     mongoDelete: 'mongoDelete',
     mongoUpdateOne: 'mongoUpdateOne',
-    mongoUpsert: 'mongoUpsert'
+    mongoUpsert: 'mongoUpsert',
   },
   apis: {
     self: 'apis',
@@ -31,26 +31,26 @@ const loggingContext = {
     postScribble: '/api/v1/scribbles - POST',
     putScribble: '/api/v1/scribbles/:scribblerSessionId - Put',
     getScribbles: '/api/v1/scribbles - GET',
-    getScribblesOne: '/api/v1/scribbles/:id - GET'
-  }
-}
+    getScribblesOne: '/api/v1/scribbles/:id - GET',
+  },
+};
 
 const enabledLoggingContexts = [
   ...Object.values(loggingContext.googleApisUtils),
   ...Object.values(loggingContext.mongoUtils),
-  ...Object.values(loggingContext.apis)
-]
+  ...Object.values(loggingContext.apis),
+];
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.metadata',
   'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/userinfo.email'
-]
+  'https://www.googleapis.com/auth/userinfo.email',
+];
 
 module.exports = {
   loggingContext,
   enabledLoggingContexts,
-  googleApisScopes: SCOPES
-}
+  googleApisScopes: SCOPES,
+};

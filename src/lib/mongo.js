@@ -1,14 +1,14 @@
 // NOTE: MONGODB NOT BEING USED AT ALL in this
 // At some point mongodb was replaced to be using google drive
 // and indexdb for offline data storage.
-const { MongoClient } = require('mongodb')
-const { getLogger } = require('./util')
-const { loggingContext } = require('./constants')
-require('dotenv').config()
-const logger = getLogger(loggingContext.mongoUtils.self)
-const MONGODB_URI = process.env.MONGODB_URI
+const { MongoClient } = require('mongodb');
+const { getLogger } = require('./util');
+const { loggingContext } = require('./constants');
+require('dotenv').config();
+const logger = getLogger(loggingContext.mongoUtils.self);
+const MONGODB_URI = process.env.MONGODB_URI;
 //  &appName=ServerlessInstance0
-const MONGODB = process.env.DB_NAME
+const MONGODB = process.env.DB_NAME;
 module.exports = (function () {
   /**
    *  Based on the query can retreive items
@@ -21,38 +21,38 @@ module.exports = (function () {
    * @returns void
    */
   const mongoGet = async (collectionName, query) => {
-    const log = logger(loggingContext.mongoUtils.mongoGet)
+    const log = logger(loggingContext.mongoUtils.mongoGet);
     const client = new MongoClient(MONGODB_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
-    })
-    let result, session
+      useUnifiedTopology: true,
+    });
+    let result, session;
     try {
-      log('1')
-      await client.connect()
-      session = client.startSession()
-      log('2')
-      !session.hasEnded && session.startTransaction()
-      log('3')
-      const db = client.db(MONGODB)
-      const collection = db.collection(collectionName)
-      result = await collection.findOne(query)
-      log('4', result)
-      !session.hasEnded && session.commitTransaction()
-      log('6')
+      log('1');
+      await client.connect();
+      session = client.startSession();
+      log('2');
+      !session.hasEnded && session.startTransaction();
+      log('3');
+      const db = client.db(MONGODB);
+      const collection = db.collection(collectionName);
+      result = await collection.findOne(query);
+      log('4', result);
+      !session.hasEnded && session.commitTransaction();
+      log('6');
     } catch (error) {
-      log('5')
-      log('querying connection failed....', error)
+      log('5');
+      log('querying connection failed....', error);
       if (!session.hasEnded) {
-        await session.abortTransaction()
+        await session.abortTransaction();
       }
 
-      result = error
+      result = error;
     } finally {
-      await client.close()
-      return result
+      await client.close();
+      return result;
     }
-  }
+  };
 
   /**
    * Adds a list of mongo documents to collection
@@ -64,30 +64,30 @@ module.exports = (function () {
    * @returns {Promise} A promise that resolves to mondodb result obj of the operation
    */
   const mongoPost = async (collectionName, mongoDocuments = []) => {
-    const log = logger(loggingContext.mongoUtils.mongoPost)
+    const log = logger(loggingContext.mongoUtils.mongoPost);
     const client = new MongoClient(MONGODB_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
-    })
-    let result, session
+      useUnifiedTopology: true,
+    });
+    let result, session;
     try {
-      await client.connect()
-      session = client.startSession()
-      session.startTransaction()
+      await client.connect();
+      session = client.startSession();
+      session.startTransaction();
 
-      const db = client.db(MONGODB)
-      const collection = db.collection(collectionName)
-      result = await collection.insertMany(mongoDocuments)
-      await session.commitTransaction()
+      const db = client.db(MONGODB);
+      const collection = db.collection(collectionName);
+      result = await collection.insertMany(mongoDocuments);
+      await session.commitTransaction();
     } catch (error) {
-      log('querying connection failed....', error)
-      if (!session.hasEnded) await session.abortTransaction()
-      result = error
+      log('querying connection failed....', error);
+      if (!session.hasEnded) await session.abortTransaction();
+      result = error;
     } finally {
-      await client.close()
-      return result
+      await client.close();
+      return result;
     }
-  }
+  };
   /**
    * Delete documents from collection using filter callback
    * @param {*} collectionName
@@ -96,33 +96,33 @@ module.exports = (function () {
    */
 
   const mongoDelete = async (collectionName, filter) => {
-    const log = logger(loggingContext.mongoUtils.mongoDelete)
+    const log = logger(loggingContext.mongoUtils.mongoDelete);
     const client = new MongoClient(MONGODB_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
-    })
-    let result, session
+      useUnifiedTopology: true,
+    });
+    let result, session;
     try {
-      await client.connect()
-      session = client.startSession()
-      session.startTransaction()
+      await client.connect();
+      session = client.startSession();
+      session.startTransaction();
 
-      const db = client.db(MONGODB)
+      const db = client.db(MONGODB);
 
-      const collection = db.collection(collectionName)
-      result = await collection.deleteMany(filter)
+      const collection = db.collection(collectionName);
+      result = await collection.deleteMany(filter);
 
-      await session.commitTransaction()
+      await session.commitTransaction();
     } catch (error) {
-      log('querying connection failed....', error)
-      await session.abortTransaction()
-      result = error
+      log('querying connection failed....', error);
+      await session.abortTransaction();
+      result = error;
     } finally {
-      await client.close()
-      if (!session.hasEnded) session.endSession()
-      return result
+      await client.close();
+      if (!session.hasEnded) session.endSession();
+      return result;
     }
-  }
+  };
   /**
    * update an document in mongodb
    * @param {*} collectionName
@@ -133,55 +133,58 @@ module.exports = (function () {
     // const log = logger(loggingContext.mongoUtils.mongoUpdateOne)
     const client = new MongoClient(MONGODB_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
-    })
-    let result, session
+      useUnifiedTopology: true,
+    });
+    let result, session;
     try {
-      await client.connect()
-      session = client.startSession()
-      session.startTransaction()
+      await client.connect();
+      session = client.startSession();
+      session.startTransaction();
 
-      const db = client.db(MONGODB)
+      const db = client.db(MONGODB);
 
-      const collection = db.collection(collectionName)
+      const collection = db.collection(collectionName);
 
       result = await collection.updateOne(query, {
-        $set: updatedFieldsObject
-      })
-      await session.commitTransaction()
+        $set: updatedFieldsObject,
+      });
+      await session.commitTransaction();
     } catch (error) {
-      if (session && !session.hasEnded) await session.abortTransaction()
-      result = error
+      if (session && !session.hasEnded) await session.abortTransaction();
+      result = error;
     } finally {
-      await client.close()
+      await client.close();
       // session.endSession()
-      return result
+      return result;
     }
-  }
+  };
 
   const mongoUpsert = async (collectionName, query, upsertObject) => {
-    const log = logger(loggingContext.mongoUtils.mongoUpsert)
-    let findResult = await mongoGet(collectionName, query)
-    log('findResult', findResult)
+    const log = logger(loggingContext.mongoUtils.mongoUpsert);
+    let findResult = await mongoGet(collectionName, query);
+    log('findResult', findResult);
     if (findResult) {
-      const res = await mongoUpdateOne(collectionName, query, upsertObject)
-      if (res?.acknowledged) return { ...findResult, ...query, ...upsertObject }
-      else return null
+      const res = await mongoUpdateOne(collectionName, query, upsertObject);
+      if (res?.acknowledged)
+        return { ...findResult, ...query, ...upsertObject };
+      else return null;
     } else {
-      const addedResult = await mongoPost(collectionName, [{ ...query, ...upsertObject }])
+      const addedResult = await mongoPost(collectionName, [
+        { ...query, ...upsertObject },
+      ]);
       if (addedResult?.insertedCount) {
-        return { ...query, ...upsertObject }
+        return { ...query, ...upsertObject };
       } else {
-        return null
+        return null;
       }
     }
-  }
+  };
 
   return {
     mongoGet: mongoGet,
     mongoPost: mongoPost,
     mongoDelete: mongoDelete,
     mongoUpdateOne: mongoUpdateOne,
-    mongoUpsert: mongoUpsert
-  }
-})()
+    mongoUpsert: mongoUpsert,
+  };
+})();
