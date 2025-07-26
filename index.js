@@ -29,6 +29,7 @@ const { mongoUpsert, mongoGet } = require('./mongo.util')
 const { loggingContext } = require('./constants')
 
 const app = express()
+app.set('trust proxy',1);
 app.use(express.json())
 app.use(
     cors({
@@ -39,6 +40,7 @@ app.use(
 // add CSP headers
 app.use(
     session({
+        proxy: process.env.NODE_ENV === 'production',
         store: MongoStore.create({
             mongoUrl: process.env.MONGODB_URI,
             dbName: process.env.DB_NAME,
@@ -101,7 +103,7 @@ app.get('/api/v1/auth', async function authGet(_, res) {
     const log = logger(loggingContext.apis.authGet)
     try {
         const authURL = await getUserAuthUrl(SCOPES, { prompt: 'consent' })
-        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN)
         log(`the auth url : `, authURL)
         res.status(200).send({ authURL })
     } catch (error) {
@@ -156,6 +158,7 @@ app.get(`/api/v1/callback`, async function authCallbackGet(req, res) {
                 log(`session save error`, err)
                 return res.status(500).send('Session error')
             }
+            log(`req.session`, req.session)
             log(`returnPath`, returnPath)
             res.redirect(process.env.GCP_CALLBACK_REDIRECT_URI)
         })
@@ -183,8 +186,8 @@ app.get('/api/v1/me', async function authMeGet(req, res) {
             res.clearCookie('connect.sid', {
                 path: '/',
                 httpOnly: true,
-                sameSite: 'lax',
-                secure: false,
+                sameSite: process.env.NODE_ENV === 'production' ? 'none': 'lax',
+                secure: process.env.NODE_ENV === 'production',
             })
             return res.status(401).send({ message: 'Unauthorized' })
         })
