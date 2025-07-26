@@ -82,7 +82,8 @@ async function getAuthClient() {
  */
 async function folderExistsInDrive(accessToken) {
   const log = logger(loggingContext.googleApisUtils.folderExistsInDrive)
-  const queryString = 'q=mimeType=\'application/vnd.google-apps.folder\' and name=\'scribbler\' and trashed=false'
+  const queryString =
+    'q=mimeType=\'application/vnd.google-apps.folder\' and name=\'scribbler\' and trashed=false'
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?${queryString}`, {
     method: 'GET',
     headers: {

@@ -4,7 +4,7 @@ const loggingContext = {
     listFiles: 'listFiles',
     folderExistsInDrive: 'folderExistsInDrive',
     getAppCredentials: 'getAppCredentials',
-    getAuthClient: "getAuthClient",
+    getAuthClient: 'getAuthClient',
     getUserAuthUrl: 'getUserAuthUrl',
     getDriveInstance: 'getDriveInstance',
     getFolderIdByName: 'getFolderIdByName',
