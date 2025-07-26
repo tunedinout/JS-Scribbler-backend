@@ -2,7 +2,7 @@ name: Deploy to Google Cloud Run
 
 on:
   push:
-    branches: [Fix-cookies-issue-in-prod]
+    branches: [main]
 
 jobs:
     deploy:
