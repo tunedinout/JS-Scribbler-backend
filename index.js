@@ -29,6 +29,7 @@ const { mongoUpsert, mongoGet } = require('./mongo.util')
 const { loggingContext } = require('./constants')
 
 const app = express()
+app.set('trust proxy',1);
 app.use(express.json())
 app.use(
     cors({
@@ -39,6 +40,7 @@ app.use(
 // add CSP headers
 app.use(
     session({
+        proxy: process.env.NODE_ENV === 'production',
         store: MongoStore.create({
             mongoUrl: process.env.MONGODB_URI,
             dbName: process.env.DB_NAME,
