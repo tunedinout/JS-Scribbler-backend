@@ -156,6 +156,7 @@ app.get(`/api/v1/callback`, async function authCallbackGet(req, res) {
                 log(`session save error`, err)
                 return res.status(500).send('Session error')
             }
+            log(`req.session`, req.session)
             log(`returnPath`, returnPath)
             res.redirect(process.env.GCP_CALLBACK_REDIRECT_URI)
         })
