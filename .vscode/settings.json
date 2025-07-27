@@ -1,0 +1,6 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+   "javascript.preferences.importModuleSpecifierEnding": "js"
+}

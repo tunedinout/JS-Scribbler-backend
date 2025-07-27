@@ -1,14 +1,14 @@
-require('dotenv').config();
-const { app } = require('./app');
-const { router } = require('./routes/v1.routes');
+import 'dotenv/config'
+import app from './app.js'
+import router from './routes/index.js'
 
 // root endpoint
 app.get('/', (_, res) => {
-  res.end();
-});
+  res.end()
+})
 
 app.listen(process.env.PORT || 3000, async () => {
-  console.log(`server running.... at ${process.env.PORT || 3000}`);
-});
+  console.log(`server running.... at ${process.env.PORT || 3000}`)
+})
 
-app.use('/api/v1', router);
+app.use('/api/v1', router)

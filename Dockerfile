@@ -1,6 +1,6 @@
 FROM node:18-slim
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
 RUN npm install --production
@@ -8,4 +8,4 @@ RUN npm install --production
 COPY . .
 
 EXPOSE 8080
-CMD ["node", "src/index.js"]
+CMD ["npm", "start"]

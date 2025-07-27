@@ -1,4 +1,4 @@
-const loggingContext = {
+export const loggingContext = {
   googleApisUtils: {
     self: 'googleApisUtils',
     listFiles: 'listFiles',
@@ -33,24 +33,18 @@ const loggingContext = {
     getScribbles: '/api/v1/scribbles - GET',
     getScribblesOne: '/api/v1/scribbles/:id - GET',
   },
-};
+}
 
-const enabledLoggingContexts = [
+export const enabledLoggingContexts = [
   ...Object.values(loggingContext.googleApisUtils),
   ...Object.values(loggingContext.mongoUtils),
   ...Object.values(loggingContext.apis),
-];
+]
 
-const SCOPES = [
+export const googleApisScopes = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.metadata',
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/userinfo.email',
-];
-
-module.exports = {
-  loggingContext,
-  enabledLoggingContexts,
-  googleApisScopes: SCOPES,
-};
+]
