@@ -82,7 +82,7 @@ async function putScribble(req, res) {
     else {
       const { accessToken } = await validateUserSession(userId)
 
-      const { scribbleId } = req.params
+      const { id: scribbleId } = req.params
       const { js = '', css = '', html = '' } = req.body
 
       log('request.body', req.body)
