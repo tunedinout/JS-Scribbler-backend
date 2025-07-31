@@ -46,24 +46,24 @@ app.use(
 
     // hosting server might overwrite these check
     // at the time of deployment
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: process.env.NODE_ENV === 'production',
     // TODO: Enable this at the time of deployment
-    // contentSecurityPolicy: {
-    //     directives: {
-    //         defaultSrc: ["'self'"],
-    //         styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
-    //         scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
-    //         objectSrc: ["'none'"],
-    //         imgSrc: ["'self'", 'data:'],
-    //         fontSrc: ["'self'"],
-    //         frameSrc: ["'none'"],
-    //         workerSrc: ["'none'"],
-    //         frameAncestors: ["'none'"],
-    //         baseUri: ["'self'"],
-    //         formAction: ["'self'"],
-    //         upgradeInsecureRequests: [],
-    //     },
-    // },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        // styleSrc: ["'self'", 'https:', "'unsafe-inline'"], // Allow styles from same origin and from jsscribbler.net
+        // scriptSrc: ["'self'"], // Allowing scripts only from self and trusted CDNs
+        // objectSrc: ["'none'"],
+        // imgSrc: ["'self'", 'data:'],
+        // fontSrc: ["'self'"],
+        // frameSrc: ["'none'"],
+        // workerSrc: ["'none'"],
+        // frameAncestors: ["'none'"],
+        // baseUri: ["'self'"],
+        // formAction: ["'self'"],
+        // upgradeInsecureRequests: [],
+      },
+    },
     frameguard: {
       action: 'sameorigin',
     },
