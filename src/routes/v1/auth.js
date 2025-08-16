@@ -7,6 +7,7 @@ import {
 } from '../../lib/google.js'
 import { mongoGet, mongoUpsert } from '../../lib/mongo.js'
 import { getLogger } from '../../utils/index.js'
+import { runWriter } from '../../workers/worker.drive.js'
 
 const logger = getLogger(loggingContext.apis.self)
 async function authGet(_, res) {
@@ -107,6 +108,7 @@ async function authMeGet(req, res) {
       email: user.email,
       name: user.name,
     })
+    runWriter(req.session.userId).catch((error) => console.error(error))
   }
 }
 

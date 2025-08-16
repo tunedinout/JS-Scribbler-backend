@@ -7,6 +7,13 @@ import {
   postScribble,
   putScribble,
 } from './v1/scribbles.js'
+import {
+  cacheGetScribble,
+  cacheGetScribbles,
+  cachePostScribble,
+  cachePutScribble,
+  cachePostScribbles,
+} from './v1/cache.js'
 
 const router = Router()
 
@@ -21,5 +28,11 @@ router.post('/scribbles', postScribble)
 
 router.get('/scribbles/:id', getScribblesOne)
 router.put('/scribbles/:id', putScribble)
+
+router.post('/sync-create', cachePostScribble)
+router.put('/sync-update', cachePutScribble)
+router.get('/load', cacheGetScribbles)
+router.post('/load', cachePostScribbles)
+router.get('/load/:id', cacheGetScribble)
 
 export default router
